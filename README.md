@@ -25,9 +25,9 @@ AI-Powered Cyber Governance & Compliance Agent (GRC Tool)
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- Node.js and npm (for mobile development)
-- Android/iOS development environment for React Native
+- Docker and Docker Compose (for full containerized deployment)
+- Node.js and npm (for local mobile development)
+- Android/iOS development environment (for local mobile builds)
 
 ## Installation & Setup
 
@@ -96,6 +96,8 @@ AI-Powered Cyber Governance & Compliance Agent (GRC Tool)
 
 2. Backend will be available at http://localhost:8000
 
+3. Mobile APK will be built and available in `./mobile-output/riskgrc.apk`
+
 ## API Endpoints
 
 - `POST /api/accounts/register/` - User registration
@@ -108,10 +110,12 @@ AI-Powered Cyber Governance & Compliance Agent (GRC Tool)
 
 ## Usage
 
-1. Register/Login with your organization and sector.
-2. Create a new assessment by inputting security metrics.
-3. View risk score, compliance status, and AI recommendations on the dashboard.
-4. Generate and export reports.
+1. For full Docker deployment: Run `docker-compose up --build` to build and run backend, and generate mobile APK.
+2. For local development: Follow backend and mobile setup sections above.
+3. Register/Login with your organization and sector.
+4. Create a new assessment by inputting security metrics.
+5. View risk score, compliance status, and AI recommendations on the dashboard.
+6. Generate and export reports.
 
 ## Deployment to App Stores
 
