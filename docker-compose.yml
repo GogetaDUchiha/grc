@@ -1,22 +1,22 @@
-version: '3.8'
-
 services:
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      - DATABASE_URL=postgres://user:password@db:5432/mydb
-      - NODE_ENV=production
+    build: ./backend
     ports:
-      - '3000:3000'
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - DJANGO_SETTINGS_MODULE=riskgrc.settings
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
 
   db:
     image: postgres:13
     environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=mydb
+      POSTGRES_DB: riskgrc
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
