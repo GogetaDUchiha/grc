@@ -1,24 +1,33 @@
+<<<<<<< HEAD
+=======
+version: '3'
+
+>>>>>>> 60330ac (chore: update React Native dependencies and Gradle wrapper)
 services:
   backend:
-    build: ./backend
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
     ports:
       - "8000:8000"
     environment:
       - DEBUG=1
-      - DJANGO_SETTINGS_MODULE=riskgrc.settings
-    volumes:
-      - ./backend:/app
-    depends_on:
-      - db
+      - DATABASE_URL=postgres://user:password@db:5432/dbname
 
   db:
-    image: postgres:13
+    image: postgres:latest
     environment:
-      POSTGRES_DB: riskgrc
+      POSTGRES_DB: dbname
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
+<<<<<<< HEAD
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
 volumes:
   postgres_data:
+=======
+    ports:
+      - "5432:5432"
+>>>>>>> 60330ac (chore: update React Native dependencies and Gradle wrapper)
