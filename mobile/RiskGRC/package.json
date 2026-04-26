@@ -17,21 +17,6 @@
     "verify": "./verify-setup.sh"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-native/new-app-screen": "*",
-    "@react-navigation/native": "^7.2.2",
-    "@react-navigation/stack": "^7.8.10",
-    "axios": "^1.15.0",
-    "expo": "^55.0.15",
-    "react": "19.2.3",
-    "react-dom": "19.2.0",
-    "react-native": "0.83.4",
-    "react-native-safe-area-context": "~5.6.2",
-    "react-native-screens": "~4.23.0",
-    "react-native-vector-icons": "^10.3.0",
-    "react-native-web": "^0.21.0"
-=======
     "@expo/metro-runtime": "^3.2.3",
     "@react-native-async-storage/async-storage": "^3.0.2",
     "@react-native-picker/picker": "^2.7.0",
@@ -52,7 +37,6 @@
     "react-native-uuid": "^2.0.1",
     "react-native-vector-icons": "^10.3.0",
     "react-native-web": "^0.21.2"
->>>>>>> 3cd25d1 (few changes)
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
