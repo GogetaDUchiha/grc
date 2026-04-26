@@ -1,0 +1,48 @@
+{
+  \"env\": {
+    \"es2021\": true,
+    \"node\": true,\n    \"react-native/react-native\": true
+  },
+  \"extends\": [\n    \"eslint:recommended\",
+    \"plugin:react/recommended\"
+  ],
+  \"parser\": \"@babel/eslint-parser\",
+  \"parserOptions\": {
+    \"ecmaFeatures\": {
+      \"jsx\": true
+    },
+    \"ecmaVersion\": \"latest\",
+    \"sourceType\": \"module\",
+    \"requireConfigFile\": false
+  },
+  \"plugins\": [\n    \"react\",
+    \"react-native\",
+    \"react-hooks\"
+  ],
+  \"rules\": {
+    \"react/react-in-jsx-scope\": \"off\",
+    \"react/prop-types\": \"warn\",
+    \"react/display-name\": \"warn\",
+    \"react-hooks/rules-of-hooks\": \"error\",
+    \"react-hooks/exhaustive-deps\": \"warn\",
+    \"no-console\": [\n      \"warn\",
+      {\n        \"allow\": [\n          \"warn\",
+          \"error\"\n        ]\n      }\n    ],
+    \"no-unused-vars\": \"warn\",
+    \"no-var\": \"error\",
+    \"prefer-const\": \"warn\",
+    \"semi\": [\n      \"error\",
+      \"always\"\n    ],
+    \"quotes\": [\n      \"error\",
+      \"single\",\n      {
+        \"avoidEscape\": true
+      }\n    ],
+    \"indent\": [\n      \"error\",
+      2\n    ],
+    \"comma-dangle\": [\n      \"error\",
+      \"always-multiline\"\n    ],
+    \"no-trailing-spaces\": \"error\",
+    \"eol-last\": [\n      \"error\",
+      \"always\"\n    ]
+  }
+}

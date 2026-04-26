@@ -8,3 +8,8 @@ pillow==12.2.0
 psycopg2-binary==2.9.11
 PyJWT==2.12.1
 sqlparse==0.5.5
+google-generativeai==0.8.3
+python-dotenv==1.0.1
+weasyprint==60.1
+requests==2.31.0
+pandas==2.2.0
