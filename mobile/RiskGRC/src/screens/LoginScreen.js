@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import COLORS from '../constants/colors';
 import {
   View,
   Text,
@@ -14,7 +15,6 @@ import {
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { COLORS } from '../../App';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -335,78 +335,6 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontFamily: 'monospace',
   },
-});
-
-export default LoginScreen;
-            <TextInput
-              style={[styles.input, errors.username && styles.inputError]}
-              placeholder="Enter your username"
-              value={username}
-              onChangeText={(text) => {
-                setUsername(text);
-                if (errors.username) setErrors({ ...errors, username: '' });
-              }}
-              editable={!isLoading}
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={150}
-            />
-            {errors.username && <Text style={styles.errorText}>{errors.username}</Text>}
-          </View>
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={[styles.input, errors.password && styles.inputError]}
-              placeholder="Enter your password"
-              secureTextEntry
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (errors.password) setErrors({ ...errors, password: '' });
-              }}
-              editable={!isLoading}
-              maxLength={255}
-            />
-            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-          </View>
-        </View>
-        <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.buttonText}>Login</Text>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Register')} disabled={isLoading}>
-          <Text style={styles.link}>
-            Don't have an account? <Text style={styles.linkBold}>Register here</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
-  );
-};
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  contentContainer: { flex: 1, justifyContent: 'center', padding: 20 },
-  title: { fontSize: 32, fontWeight: '700', textAlign: 'center', marginBottom: 8, color: '#333' },
-  subtitle: { fontSize: 14, textAlign: 'center', marginBottom: 40, color: '#666' },
-  formContainer: { marginBottom: 24 },
-  fieldContainer: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 6, color: '#333' },
-  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 6, fontSize: 14, backgroundColor: '#fff', color: '#333' },
-  inputError: { borderColor: '#dc3545', backgroundColor: '#fff5f5' },
-  errorText: { marginTop: 4, fontSize: 12, color: '#dc3545' },
-  button: { backgroundColor: '#007bff', padding: 14, borderRadius: 6, alignItems: 'center', marginBottom: 16 },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
-  link: { textAlign: 'center', color: '#666', fontSize: 14 },
-  linkBold: { color: '#007bff', fontWeight: '600' },
 });
 
 export default LoginScreen;

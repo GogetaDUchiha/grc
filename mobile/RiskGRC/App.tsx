@@ -13,71 +13,40 @@ import RegisterScreen from './src/screens/RegisterScreen';
 // App Screens
 import DashboardScreen from './src/screens/DashboardScreen';
 import AssessmentScreen from './src/screens/AssessmentScreen';
-import NewAssessmentScreen from './src/screens/NewAssessmentScreen';
 import AssessmentDetailScreen from './src/screens/AssessmentDetailScreen';
-import OrganizationsScreen from './src/screens/OrganizationsScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+
+import COLORS from './src/constants/colors';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const COLORS = {
-  primary: '#2563eb',
-  secondary: '#1e40af',
-  success: '#10b981',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  light: '#f3f4f6',
-  dark: '#111827',
-  muted: '#6b7280',
-};
 
-// Auth Stack Navigator
+// ================= AUTH STACK =================
 function AuthStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen
-        name="LoginScreen"
-        component={LoginScreen}
-        options={{ animationEnabled: false }}
-      />
-      <Stack.Screen
-        name="RegisterScreen"
-        component={RegisterScreen}
-        options={{ animationEnabled: false }}
-      />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
   );
 }
 
-// App Stack Navigator (with Assessment flows)
-function AssessmentStack() {
+
+// ================= ASSESS STACK =================
+function AssessStack() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: {
-          backgroundColor: COLORS.primary,
-        },
+        headerStyle: { backgroundColor: COLORS.primary },
         headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
       }}
     >
       <Stack.Screen
-        name="AssessmentHome"
+        name="AssessHome"
         component={AssessmentScreen}
-        options={{ title: 'Assessments', headerLeft: () => null }}
-      />
-      <Stack.Screen
-        name="NewAssessment"
-        component={NewAssessmentScreen}
-        options={{ title: 'New Assessment' }}
+        options={{ title: 'Assess' }}
       />
       <Stack.Screen
         name="AssessmentDetail"
@@ -88,64 +57,37 @@ function AssessmentStack() {
   );
 }
 
-// App Tab Navigator
+
+// ================= MAIN TABS =================
 function AppTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.muted,
+        tabBarIcon: ({ color, size }) => {
+          let iconName = 'dashboard';
 
-          if (route.name === 'DashboardTab') {
-            iconName = focused ? 'dashboard' : 'dashboard-outline';
-          } else if (route.name === 'AssessmentTab') {
-            iconName = focused ? 'assessment' : 'assessment-outline';
-          } else if (route.name === 'OrganizationsTab') {
-            iconName = focused ? 'business' : 'business-outline';
-          } else if (route.name === 'ReportsTab') {
-            iconName = focused ? 'description' : 'description-outline';
-          } else if (route.name === 'SettingsTab') {
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
+          if (route.name === 'Dashboard') iconName = 'dashboard';
+          else if (route.name === 'Assess') iconName = 'assignment';
+          else if (route.name === 'Reports') iconName = 'description';
+          else if (route.name === 'Settings') iconName = 'settings';
 
           return <MaterialIcons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.muted,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
       })}
     >
-      <Tab.Screen
-        name="DashboardTab"
-        component={DashboardScreen}
-        options={{ title: 'Dashboard' }}
-      />
-      <Tab.Screen
-        name="AssessmentTab"
-        component={AssessmentStack}
-        options={{ title: 'Assess' }}
-      />
-      <Tab.Screen
-        name="OrganizationsTab"
-        component={OrganizationsScreen}
-        options={{ title: 'Organizations' }}
-      />
-      <Tab.Screen
-        name="ReportsTab"
-        component={ReportsScreen}
-        options={{ title: 'Reports' }}
-      />
-      <Tab.Screen
-        name="SettingsTab"
-        component={SettingsScreen}
-        options={{ title: 'Settings' }}
-      />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Assess" component={AssessStack} />
+      <Tab.Screen name="Reports" component={ReportsScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
 
-// Root Navigator
+
+// ================= ROOT =================
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -158,8 +100,8 @@ export default function App() {
     try {
       const token = await AsyncStorage.getItem('access_token');
       setIsLoggedIn(!!token);
-    } catch (error) {
-      console.error('Error checking login status:', error);
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -167,7 +109,12 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.light }}>
+      <View style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: COLORS.light
+      }}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
@@ -179,6 +126,3 @@ export default function App() {
     </NavigationContainer>
   );
 }
-
-export { COLORS };
-
