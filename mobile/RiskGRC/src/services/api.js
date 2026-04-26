@@ -11,7 +11,7 @@ try {
 
 const ENV = {
   dev: {
-    apiUrl: 'http://localhost:8000/api',
+    apiUrl: 'http://10.0.2.15:8000/api',
   },
   prod: {
     apiUrl: process.env.REACT_APP_API_URL || 'https://api.riskgrc.com/api',

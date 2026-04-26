@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
-    "lib": ["es2020", "dom", "dom.iterable"],
+    "lib": [
+      "es2020",
+      "dom",
+      "dom.iterable"
+    ],
     "jsx": "react-native",
     "module": "esnext",
     "moduleResolution": "node",
@@ -13,8 +17,20 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "types": ["jest", "node"]
+    "types": [
+      "jest",
+      "node"
+    ]
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/node_modules", "**/Pods", "dist", "build"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/Pods",
+    "dist",
+    "build"
+  ],
+  "extends": "expo/tsconfig.base"
 }

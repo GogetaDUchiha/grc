@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import COLORS from '../constants/colors';
 import {
   View,
   Text,
@@ -12,7 +13,6 @@ import {
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { COLORS } from '../../App';
 
 const ReportsScreen = () => {
   const [assessments, setAssessments] = useState([]);
