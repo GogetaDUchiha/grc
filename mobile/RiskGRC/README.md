@@ -15,7 +15,7 @@ A secure, cross-platform mobile application for risk and governance assessment b
 1. **Clone and navigate to the project**
 
 ```bash
-cd /workspaces/grc/mobile/RiskGRC
+cd mobile/RiskGRC
 ```
 
 2. **Install dependencies**
@@ -38,14 +38,15 @@ Edit `.env` to configure your backend API:
 REACT_APP_API_URL=http://localhost:8000/api
 REACT_APP_ENV=development
 NODE_ENV=development
+REACT_APP_GEMINI_API_KEY=your-gemini-api-key
 ```
 
 4. **Start the Expo development server**
 
-For **Web (Kali Linux or any Linux system)**:
+For **Web (Linux, macOS, Windows)**:
 
 ```bash
-npx expo start --web
+npm run web
 ```
 
 This will:
@@ -59,17 +60,17 @@ The application will be available at: **http://localhost:19006** (or port Expo a
 
 **iOS** (macOS only):
 ```bash
-npx expo run:ios
+npm run ios
 ```
 
 **Android**:
 ```bash
-npx expo run:android
+npm run android
 ```
 
 **Web**:
 ```bash
-npx expo start --web
+npm run web
 ```
 
 ## 🔒 Security Features
@@ -162,6 +163,9 @@ Create a `.env` file in the root directory:
 # Development Backend URL
 REACT_APP_API_URL=http://localhost:8000/api
 
+# Gemini API Key for AI features
+REACT_APP_GEMINI_API_KEY=your-gemini-api-key
+
 # Environment (development or production)
 REACT_APP_ENV=development
 NODE_ENV=development
@@ -177,6 +181,9 @@ npm test
 
 # Run linter
 npm run lint
+
+# Verify setup
+npm run verify
 ```
 
 ## 📦 Building for Production
@@ -223,7 +230,7 @@ eas build --platform web
 
 ### For System Administrators
 
-1. Keep Node.js updated
+1. Keep Node.js updated (requires >= 22.11.0)
 2. Use strong environment variable secrets
 3. Implement HTTPS reverse proxy
 4. Monitor API rate limits
@@ -231,10 +238,10 @@ eas build --platform web
 
 ## 🐛 Troubleshooting
 
-### \"Cannot find module\" errors
+### "Cannot find module" errors
 
 ```bash
-rm -rf node_modules package-lock.json
+npm run clean
 npm install
 ```
 
@@ -249,10 +256,11 @@ lsof -ti:19006 | xargs kill -9
 
 1. Enable Expo development server:
    ```bash
-   npx expo start --web
+   npm run web
    ```
 2. Check browser console for errors: `F12`
 3. Verify `.env` configuration
+4. Ensure backend is running at `REACT_APP_API_URL`
 
 ### API connection failed
 
@@ -262,6 +270,7 @@ lsof -ti:19006 | xargs kill -9
    ```
 2. Ensure backend server is running
 3. Check for CORS issues in browser console
+4. Verify `REACT_APP_GEMINI_API_KEY` is set for AI features
 
 ## 🤝 Contributing
 
@@ -269,6 +278,7 @@ lsof -ti:19006 | xargs kill -9
 2. Add input validation for new forms
 3. Use `react-native` components (compatibility with web/mobile)
 4. Test on multiple platforms
+5. Run linting before committing: `npm run lint`
 
 ## 📄 License
 
@@ -280,56 +290,8 @@ See LICENSE file for details.
 - [React Native Docs](https://reactnative.dev)
 - [Axios Documentation](https://axios-http.com)
 - [React Navigation](https://reactnavigation.org)
+- [Google Gemini API](https://ai.google.dev)
 
 ---
 
 **Made with ❤️ for secure risk assessment**
-
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
