@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import api from '../services/api';
 import COLORS from '../constants/colors';
 
 function getRiskColor(level) {
@@ -54,8 +54,6 @@ export default function AssessmentDetailScreen({ route, navigation }) {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const apiUrl = await AsyncStorage.getItem('apiUrl') || 'http://localhost:8000/api';
-
       if (token === 'demo_access_token') {
         setAssessment({
           id: assessmentId,
@@ -68,7 +66,7 @@ export default function AssessmentDetailScreen({ route, navigation }) {
         return;
       }
 
-      const response = await axios.get(`${apiUrl}/grc/assessments/${assessmentId}/`, {
+      const response = await api.get(`/grc/assessments/${assessmentId}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAssessment(response.data);
@@ -280,10 +278,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
   aiButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

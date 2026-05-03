@@ -186,14 +186,19 @@ class AssessmentViewSet(viewsets.ModelViewSet):
         """Create assessment and trigger engine calculations"""
         # Get organization
         org_id = self.request.data.get('organization')
-        try:
-            org = Organization.objects.get(
-                id=org_id,
-                members__user=self.request.user
-            )
-        except Organization.DoesNotExist:
-            raise PermissionError("Organization not found or you don't have access")
-        
+        if org_id:
+            try:
+                org = Organization.objects.get(
+                    id=org_id,
+                    members__user=self.request.user
+                )
+            except Organization.DoesNotExist:
+                raise PermissionError("Organization not found or you don't have access")
+        else:
+            org = Organization.objects.filter(members__user=self.request.user).first()
+            if not org:
+                raise PermissionError("You must belong to an organization to create an assessment.")
+            
         assessment = serializer.save(
             organization=org,
             created_by=self.request.user
@@ -204,7 +209,14 @@ class AssessmentViewSet(viewsets.ModelViewSet):
 
     def run_assessment_engines(self, assessment):
         """Execute all assessment engines"""
-        kri_data = json.loads(self.request.data.get('kri_data', '{}'))
+        kri_data_raw = self.request.data.get('kri_data', {})
+        if isinstance(kri_data_raw, str):
+            try:
+                kri_data = json.loads(kri_data_raw)
+            except json.JSONDecodeError:
+                kri_data = {}
+        else:
+            kri_data = kri_data_raw
         
         # 1. KRI Engine: Normalize inputs
         kri_engine = KRIEngine(assessment.organization.sector)

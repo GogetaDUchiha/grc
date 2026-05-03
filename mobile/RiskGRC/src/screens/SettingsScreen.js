@@ -12,9 +12,9 @@ import {
   Modal,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { AuthContext } from '../../App';
+import { AuthContext } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import api from '../services/api';
 
 const SettingsScreen = ({ navigation }) => {
   const { logout } = React.useContext(AuthContext);
@@ -51,9 +51,7 @@ const SettingsScreen = ({ navigation }) => {
   const loadUserInfo = async () => {
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const apiUrl = await AsyncStorage.getItem('apiUrl') || 'http://localhost:8000/api';
-
-      const response = await axios.get(`${apiUrl}/accounts/user/`, {
+      const response = await api.get(`/accounts/user/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUserInfo(response.data);

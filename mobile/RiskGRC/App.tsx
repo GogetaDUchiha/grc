@@ -21,16 +21,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 
 import COLORS from './src/constants/colors';
 
-// ===== AUTH CONTEXT =====
-export const AuthContext = createContext<{
-  isLoggedIn: boolean;
-  login: (token: string, refresh: string) => void;
-  logout: () => void;
-}>({
-  isLoggedIn: false,
-  login: () => { },
-  logout: () => { },
-});
+import { AuthContext } from './src/context/AuthContext';
 
 export function useAuth() {
   return useContext(AuthContext);

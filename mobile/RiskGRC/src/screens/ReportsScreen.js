@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import api from '../services/api';
 
 const ReportsScreen = () => {
   const [assessments, setAssessments] = useState([]);
@@ -26,9 +26,7 @@ const ReportsScreen = () => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const apiUrl = await AsyncStorage.getItem('apiUrl') || 'http://localhost:8000/api';
-
-      const response = await axios.get(`${apiUrl}/grc/assessments/`, {
+      const response = await api.get(`/grc/assessments/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -187,10 +185,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   reportHeader: {
     flexDirection: 'row',

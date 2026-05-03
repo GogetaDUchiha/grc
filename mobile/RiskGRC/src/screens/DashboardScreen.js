@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import api from '../services/api';
 import COLORS from '../constants/colors';
-import { AuthContext } from '../../App';
+import { AuthContext } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -72,15 +72,13 @@ export default function DashboardScreen({ navigation }) {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const apiUrl = await AsyncStorage.getItem('apiUrl') || 'http://localhost:8000/api';
-
       if (token === 'demo_access_token') {
         setAssessments(MOCK_ASSESSMENTS);
         setUseMock(true);
         return;
       }
 
-      const response = await axios.get(`${apiUrl}/grc/assessments/`, {
+      const response = await api.get(`/grc/assessments/`, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 5000,
       });
@@ -381,10 +379,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
   },
   scoreLeft: {
     flex: 1,
@@ -451,10 +445,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
   primaryActionText: {
     color: '#fff',
@@ -482,10 +472,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
   },
   sectionHeader: {
     flexDirection: 'row',

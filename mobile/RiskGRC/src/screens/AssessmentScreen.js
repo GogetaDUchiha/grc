@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import api from '../services/api';
 
 const windowWidth = Dimensions.get('window').width;
 
@@ -31,10 +31,8 @@ const AssessmentScreen = ({ navigation }) => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const apiUrl = await AsyncStorage.getItem('apiUrl') || 'http://localhost:8000/api';
-
       // Load organizations
-      const orgsRes = await axios.get(`${apiUrl}/accounts/organizations/`, {
+      const orgsRes = await api.get(`/accounts/organizations/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setOrganizations(orgsRes.data);
@@ -44,7 +42,7 @@ const AssessmentScreen = ({ navigation }) => {
 
       // Load assessments if org is selected
       if (selectedOrg) {
-        const assessRes = await axios.get(`${apiUrl}/grc/assessments/`, {
+        const assessRes = await api.get(`/grc/assessments/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setAssessments(assessRes.data);
@@ -304,10 +302,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   cardHeaderass: {
     flexDirection: 'row',

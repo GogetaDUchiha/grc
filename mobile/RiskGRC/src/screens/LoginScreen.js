@@ -14,8 +14,8 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { AuthContext } from '../../App';
+import api from '../services/api';
+import { AuthContext } from '../context/AuthContext';
 
 const LoginScreen = ({ navigation }) => {
   const { login } = useContext(AuthContext);
@@ -45,10 +45,7 @@ const LoginScreen = ({ navigation }) => {
     if (!validateInputs()) return;
     setIsLoading(true);
     try {
-      const apiUrl = 'http://localhost:8000/api';
-      await AsyncStorage.setItem('apiUrl', apiUrl);
-
-      const response = await axios.post(`${apiUrl}/accounts/login/`, {
+      const response = await api.post(`/accounts/login/`, {
         email: email.trim(),
         password,
       });
@@ -228,10 +225,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   title: {
     fontSize: 28,
@@ -247,10 +240,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
     marginBottom: 24,
   },
   fieldContainer: {

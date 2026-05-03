@@ -63,3 +63,8 @@ Pods/
 # OS
 .DS_Store
 Thumbs.db
+# Custom files to not push
+backend.log
+*.log
+.env.*
+!.env.example

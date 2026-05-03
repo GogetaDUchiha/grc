@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import api from '../services/api';
 import COLORS from '../constants/colors';
 
 const KRI_FIELDS = [
@@ -113,8 +113,6 @@ export default function NewAssessmentScreen({ navigation }) {
         setIsLoading(true);
         try {
             const token = await AsyncStorage.getItem('access_token');
-            const apiUrl = await AsyncStorage.getItem('apiUrl') || 'http://localhost:8000/api';
-
             const kriData = {};
             KRI_FIELDS.forEach(({ key }) => {
                 kriData[key] = parseFloat(kris[key]);
@@ -141,10 +139,9 @@ export default function NewAssessmentScreen({ navigation }) {
                 return;
             }
 
-            const response = await axios.post(
-                `${apiUrl}/grc/assessments/create/`,
-                { input_mode: 'manual', kri_data: kriData },
-                { headers: { Authorization: `Bearer ${token}` } }
+            const response = await api.post(
+                `/grc/assessments/`,
+                { input_mode: 'manual', kri_data: kriData }
             );
 
             Alert.alert('Assessment Complete', `Risk score: ${response.data.risk_score?.toFixed(1) || 'N/A'}`, [
@@ -371,10 +368,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         marginTop: 8,
-        shadowColor: COLORS.primary,
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
     },
     submitBtnDisabled: { opacity: 0.6 },
     submitBtnText: {

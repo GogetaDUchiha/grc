@@ -13,19 +13,20 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import api from '../services/api';
 import COLORS from '../constants/colors';
 
-const SECTORS = ['Fintech', 'Healthcare', 'Education', 'Retail', 'Government', 'Other'];
+const SECTORS = ['Fintech', 'Banking', 'Telecom', 'Government', 'IT'];
 
 const RegisterScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [sector, setSector] = useState('Fintech');
+  const [sector, setSector] = useState(SECTORS[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [globalError, setGlobalError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const validateInputs = () => {
@@ -51,8 +52,7 @@ const RegisterScreen = ({ navigation }) => {
     if (!validateInputs()) return;
     setIsLoading(true);
     try {
-      const apiUrl = await AsyncStorage.getItem('apiUrl') || 'http://localhost:8000/api';
-      const response = await axios.post(`${apiUrl}/accounts/register/`, {
+      const response = await api.post(`/accounts/register/`, {
         email: email.trim(),
         phone: phone.trim(),
         password,
@@ -62,6 +62,7 @@ const RegisterScreen = ({ navigation }) => {
       if (response.data?.tokens?.access) {
         await AsyncStorage.setItem('access_token', response.data.tokens.access);
         await AsyncStorage.setItem('refresh_token', response.data.tokens.refresh);
+        setGlobalError('');
         Alert.alert('Success', 'Account created! Please login.', [
           { text: 'OK', onPress: () => navigation.navigate('Login') },
         ]);
@@ -71,12 +72,19 @@ const RegisterScreen = ({ navigation }) => {
         ]);
       }
     } catch (error) {
+      const errorData = error?.response?.data || {};
+      const firstErrorVal = Object.values(errorData)[0];
+      let genError = '';
+      if (Array.isArray(firstErrorVal)) genError = firstErrorVal[0];
+      else if (typeof firstErrorVal === 'string') genError = firstErrorVal;
+
       const errorMessage =
-        error?.response?.data?.detail ||
-        error?.response?.data?.email?.[0] ||
-        error?.response?.data?.non_field_errors?.[0] ||
+        errorData.detail ||
+        genError ||
         error?.message ||
         'Registration failed. Please try again.';
+
+      setGlobalError(errorMessage);
       Alert.alert('Registration Error', errorMessage);
     } finally {
       setIsLoading(false);
@@ -192,20 +200,31 @@ const RegisterScreen = ({ navigation }) => {
           {/* Sector */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Sector</Text>
-            <View style={styles.sectorContainer}>
-              {SECTORS.map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.sectorPill, sector === s && styles.sectorPillActive]}
-                  onPress={() => setSector(s)}
-                >
-                  <Text style={[styles.sectorText, sector === s && styles.sectorTextActive]}>
-                    {s}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.sectorContainer}>
+                {SECTORS.map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.sectorPill, sector === s && styles.sectorPillActive]}
+                    onPress={() => setSector(s)}
+                  >
+                    <Text style={[styles.sectorText, sector === s && styles.sectorTextActive]}>
+                      {s}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
+
+          {/* Global Error Notice */}
+          {globalError ? (
+            <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+              <Text style={{ color: COLORS.danger, fontSize: 14, textAlign: 'center' }}>
+                {globalError}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <TouchableOpacity
@@ -250,10 +269,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   title: { fontSize: 24, fontWeight: '700', color: COLORS.dark, marginBottom: 4 },
   subtitle: { fontSize: 13, color: COLORS.muted },
@@ -262,10 +277,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   fieldContainer: { marginBottom: 16 },
   label: { fontSize: 13, fontWeight: '600', marginBottom: 8, color: COLORS.dark },

@@ -9,19 +9,7 @@ try {
   SecureStore = null;
 }
 
-const ENV = {
-  dev: {
-    apiUrl: 'http://10.0.2.15:8000/api',
-  },
-  prod: {
-    apiUrl: process.env.REACT_APP_API_URL || 'https://api.riskgrc.com/api',
-  },
-};
-
-const API_BASE_URL =
-  __DEV__ || process.env.NODE_ENV === 'development'
-    ? ENV.dev.apiUrl
-    : ENV.prod.apiUrl;
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 const TIMEOUT = 15000; // 15 seconds
 const MAX_RETRIES = 3;
