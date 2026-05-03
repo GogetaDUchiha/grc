@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import COLORS from '../constants/colors';
 import {
   View,
@@ -12,11 +12,13 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { AuthContext } from '../../App';
 
 const LoginScreen = ({ navigation }) => {
+  const { login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -40,9 +42,7 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const handleLogin = async () => {
-    if (!validateInputs()) {
-      return;
-    }
+    if (!validateInputs()) return;
     setIsLoading(true);
     try {
       const apiUrl = 'http://localhost:8000/api';
@@ -54,25 +54,31 @@ const LoginScreen = ({ navigation }) => {
       });
 
       if (response.data?.tokens?.access) {
-        await AsyncStorage.setItem('access_token', response.data.tokens.access);
-        await AsyncStorage.setItem('refresh_token', response.data.tokens.refresh);
+        await login(response.data.tokens.access, response.data.tokens.refresh);
         setPassword('');
         setEmail('');
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'DashboardTab' }],
-        });
       } else {
-        Alert.alert('Error', 'Invalid response format from server');
+        Alert.alert('Error', 'Invalid response from server');
       }
     } catch (error) {
       const errorMessage =
         error?.response?.data?.error ||
         error?.response?.data?.detail ||
         error?.message ||
-        'Login failed. Please try again';
+        'Login failed. Please try again.';
       Alert.alert('Login Error', errorMessage);
-      console.error('Login error:', error.response?.data || error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Demo login — bypasses backend
+  const handleDemoLogin = async () => {
+    setIsLoading(true);
+    try {
+      await AsyncStorage.setItem('apiUrl', 'http://localhost:8000/api');
+      // Use mock token for demo
+      await login('demo_access_token', 'demo_refresh_token');
     } finally {
       setIsLoading(false);
     }
@@ -162,6 +168,16 @@ const LoginScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
 
+          {/* Demo Button */}
+          <TouchableOpacity
+            style={styles.demoButton}
+            onPress={handleDemoLogin}
+            disabled={isLoading}
+          >
+            <MaterialIcons name="play-circle-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.demoButtonText}>Try Demo (No Backend Needed)</Text>
+          </TouchableOpacity>
+
           {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
@@ -172,7 +188,7 @@ const LoginScreen = ({ navigation }) => {
           {/* Register Link */}
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('RegisterScreen')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
               <Text style={styles.registerLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
@@ -198,6 +214,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 40,
   },
   header: {
     alignItems: 'center',
@@ -254,6 +271,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: '#fff',
+    gap: 8,
   },
   inputWrapperError: {
     borderColor: COLORS.danger,
@@ -261,7 +279,6 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    marginHorizontal: 8,
     fontSize: 15,
     color: COLORS.dark,
   },
@@ -287,6 +304,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
+  },
+  demoButton: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    gap: 8,
+  },
+  demoButtonText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 14,
   },
   divider: {
     flexDirection: 'row',

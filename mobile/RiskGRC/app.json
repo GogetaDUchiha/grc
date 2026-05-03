@@ -2,7 +2,7 @@
   "expo": {
     "name": "RiskGRC",
     "slug": "riskgrc",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -12,8 +12,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#2563eb"
       },
       "package": "com.riskgrc.app",
       "permissions": []
@@ -22,16 +21,7 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": [
-      [
-        "expo-secure-store",
-        {
-          "faceIDPermission": "Whether to access face recognition"
-        }
-      ]
-    ],
     "scheme": "riskgrc",
-    "userInterfaceStyle": "automatic",
-    "sdkVersion": "51.0.0"
+    "userInterfaceStyle": "automatic"
   }
 }

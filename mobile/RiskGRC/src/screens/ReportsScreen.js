@@ -10,7 +10,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
@@ -31,7 +31,7 @@ const ReportsScreen = () => {
       const response = await axios.get(`${apiUrl}/grc/assessments/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
 
       // Sort by created_at descending
       const sorted = response.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -49,6 +49,21 @@ const ReportsScreen = () => {
       'Export PDF',
       'PDF export feature coming soon.\nYou can download the report from the web portal.'
     );
+  };
+
+  const getRiskColor = (riskLevel) => {
+    switch (riskLevel) {
+      case 'Low':
+        return COLORS.success;
+      case 'Moderate':
+        return COLORS.warning;
+      case 'High':
+        return '#ff8c00';
+      case 'Critical':
+        return COLORS.danger;
+      default:
+        return COLORS.muted;
+    }
   };
 
   const renderReportItem = ({ item }) => (
@@ -99,21 +114,6 @@ const ReportsScreen = () => {
       </View>
     </View>
   );
-
-  const getRiskColor = (riskLevel) => {
-    switch (riskLevel) {
-      case 'Low':
-        return COLORS.success;
-      case 'Moderate':
-        return COLORS.warning;
-      case 'High':
-        return '#ff8c00';
-      case 'Critical':
-        return COLORS.danger;
-      default:
-        return COLORS.muted;
-    }
-  };
 
   if (isLoading) {
     return (

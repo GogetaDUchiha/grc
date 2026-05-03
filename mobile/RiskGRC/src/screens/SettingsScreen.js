@@ -11,11 +11,13 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { AuthContext } from '../../App';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 const SettingsScreen = ({ navigation }) => {
+  const { logout } = React.useContext(AuthContext);
   const [userInfo, setUserInfo] = useState(null);
   const [settings, setSettings] = useState({
     notifications: true,
@@ -74,17 +76,12 @@ const SettingsScreen = ({ navigation }) => {
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', onPress: () => {}, style: 'cancel' },
+      { text: 'Cancel', onPress: () => { }, style: 'cancel' },
       {
         text: 'Logout',
         onPress: async () => {
           try {
-            await AsyncStorage.removeItem('access_token');
-            await AsyncStorage.removeItem('refresh_token');
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'LoginScreen' }],
-            });
+            await logout();
           } catch (error) {
             Alert.alert('Error', 'Failed to logout');
           }
@@ -96,7 +93,7 @@ const SettingsScreen = ({ navigation }) => {
 
   const handleClearCache = async () => {
     Alert.alert('Clear Cache', 'Are you sure? This will delete all cached data.', [
-      { text: 'Cancel', onPress: () => {}, style: 'cancel' },
+      { text: 'Cancel', onPress: () => { }, style: 'cancel' },
       {
         text: 'Clear',
         onPress: async () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,104 +11,73 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Picker } from '@react-native-picker/picker';
-import { authAPI } from '../services/api';
-import { validateUsername, validateEmail, validatePassword } from '../utils/validation';
+import axios from 'axios';
+import COLORS from '../constants/colors';
+
+const SECTORS = ['Fintech', 'Healthcare', 'Education', 'Retail', 'Government', 'Other'];
 
 const RegisterScreen = ({ navigation }) => {
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [organization, setOrganization] = useState('');
-  const [organizations, setOrganizations] = useState([]);
+  const [sector, setSector] = useState('Fintech');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    const fetchOrganizations = async () => {
-      try {
-        const response = await authAPI.getOrganizations();
-        if (Array.isArray(response.data)) {
-          setOrganizations(response.data);
-        }
-      } catch (error) {
-        console.warn('Failed to load organizations:', error.message);
-      }
-    };
-    fetchOrganizations();
-  }, []);
+  const [showPassword, setShowPassword] = useState(false);
 
   const validateInputs = () => {
     const newErrors = {};
-
-    const usernameValidation = validateUsername(username);
-    if (!usernameValidation.valid) {
-      newErrors.username = usernameValidation.error;
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email';
     }
-
-    const emailValidation = validateEmail(email);
-    if (!emailValidation.valid) {
-      newErrors.email = emailValidation.error;
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
-
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.valid) {
-      newErrors.password = passwordValidation.error;
-    }
-
     if (password !== passwordConfirm) {
       newErrors.passwordConfirm = 'Passwords do not match';
     }
-
-    if (!organization) {
-      newErrors.organization = 'Please select an organization';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleRegister = async () => {
-    if (!validateInputs()) {
-      return;
-    }
-
+    if (!validateInputs()) return;
     setIsLoading(true);
     try {
-      const response = await authAPI.register({
-        username: username.trim(),
+      const apiUrl = await AsyncStorage.getItem('apiUrl') || 'http://localhost:8000/api';
+      const response = await axios.post(`${apiUrl}/accounts/register/`, {
         email: email.trim(),
+        phone: phone.trim(),
         password,
-        organization,
+        sector,
       });
 
-      if (response.data?.tokens?.access && response.data?.tokens?.refresh) {
+      if (response.data?.tokens?.access) {
         await AsyncStorage.setItem('access_token', response.data.tokens.access);
         await AsyncStorage.setItem('refresh_token', response.data.tokens.refresh);
-
-        // Clear sensitive data
-        setPassword('');
-        setPasswordConfirm('');
-        setUsername('');
-        setEmail('');
-
-        navigation.replace('Dashboard');
+        Alert.alert('Success', 'Account created! Please login.', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') },
+        ]);
       } else {
-        Alert.alert('Error', 'Invalid response format from server');
+        Alert.alert('Success', 'Account created! Please login.', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') },
+        ]);
       }
     } catch (error) {
       const errorMessage =
         error?.response?.data?.detail ||
-        error?.response?.data?.username?.[0] ||
         error?.response?.data?.email?.[0] ||
         error?.response?.data?.non_field_errors?.[0] ||
         error?.message ||
-        'Registration failed. Please try again';
-
+        'Registration failed. Please try again.';
       Alert.alert('Registration Error', errorMessage);
-      console.error('Registration error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -120,102 +89,123 @@ const RegisterScreen = ({ navigation }) => {
       style={styles.container}
     >
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join RiskGRC</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <MaterialIcons name="security" size={40} color={COLORS.primary} />
+          </View>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Join RiskGRC — AI-Powered GRC</Text>
+        </View>
 
         <View style={styles.formContainer}>
+          {/* Email */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Username</Text>
-            <TextInput
-              style={[styles.input, errors.username && styles.inputError]}
-              placeholder="Choose a username"
-              value={username}
-              onChangeText={(text) => {
-                setUsername(text);
-                if (errors.username) setErrors({ ...errors, username: '' });
-              }}
-              editable={!isLoading}
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={150}
-            />
-            {errors.username && <Text style={styles.errorText}>{errors.username}</Text>}
-          </View>
-
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={[styles.input, errors.email && styles.inputError]}
-              placeholder="your@email.com"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (errors.email) setErrors({ ...errors, email: '' });
-              }}
-              editable={!isLoading}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              maxLength={254}
-            />
+            <Text style={styles.label}>Email Address *</Text>
+            <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
+              <MaterialIcons name="email" size={18} color={COLORS.muted} />
+              <TextInput
+                style={styles.input}
+                placeholder="your@email.com"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (errors.email) setErrors({ ...errors, email: '' });
+                }}
+                editable={!isLoading}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholderTextColor={COLORS.muted}
+              />
+            </View>
             {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
           </View>
 
+          {/* Phone */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={[styles.input, errors.password && styles.inputError]}
-              placeholder="At least 6 characters"
-              secureTextEntry
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (errors.password) setErrors({ ...errors, password: '' });
-              }}
-              editable={!isLoading}
-              maxLength={255}
-            />
+            <Text style={styles.label}>Phone Number</Text>
+            <View style={styles.inputWrapper}>
+              <MaterialIcons name="phone" size={18} color={COLORS.muted} />
+              <TextInput
+                style={styles.input}
+                placeholder="+1 234 567 8900"
+                value={phone}
+                onChangeText={setPhone}
+                editable={!isLoading}
+                keyboardType="phone-pad"
+                placeholderTextColor={COLORS.muted}
+              />
+            </View>
+          </View>
+
+          {/* Password */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Password *</Text>
+            <View style={[styles.inputWrapper, errors.password && styles.inputError]}>
+              <MaterialIcons name="lock" size={18} color={COLORS.muted} />
+              <TextInput
+                style={styles.input}
+                placeholder="At least 6 characters"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) setErrors({ ...errors, password: '' });
+                }}
+                editable={!isLoading}
+                placeholderTextColor={COLORS.muted}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <MaterialIcons
+                  name={showPassword ? 'visibility' : 'visibility-off'}
+                  size={18}
+                  color={COLORS.muted}
+                />
+              </TouchableOpacity>
+            </View>
             {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
           </View>
 
+          {/* Confirm Password */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Confirm Password</Text>
-            <TextInput
-              style={[styles.input, errors.passwordConfirm && styles.inputError]}
-              placeholder="Repeat password"
-              secureTextEntry
-              value={passwordConfirm}
-              onChangeText={(text) => {
-                setPasswordConfirm(text);
-                if (errors.passwordConfirm) setErrors({ ...errors, passwordConfirm: '' });
-              }}
-              editable={!isLoading}
-              maxLength={255}
-            />
+            <Text style={styles.label}>Confirm Password *</Text>
+            <View style={[styles.inputWrapper, errors.passwordConfirm && styles.inputError]}>
+              <MaterialIcons name="lock-outline" size={18} color={COLORS.muted} />
+              <TextInput
+                style={styles.input}
+                placeholder="Repeat password"
+                secureTextEntry
+                value={passwordConfirm}
+                onChangeText={(text) => {
+                  setPasswordConfirm(text);
+                  if (errors.passwordConfirm) setErrors({ ...errors, passwordConfirm: '' });
+                }}
+                editable={!isLoading}
+                placeholderTextColor={COLORS.muted}
+              />
+            </View>
             {errors.passwordConfirm && (
               <Text style={styles.errorText}>{errors.passwordConfirm}</Text>
             )}
           </View>
 
-          {organizations.length > 0 && (
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Organization</Text>
-              <View style={[styles.pickerContainer, errors.organization && styles.inputError]}>
-                <Picker
-                  selectedValue={organization}
-                  onValueChange={setOrganization}
-                  enabled={!isLoading}
+          {/* Sector */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Sector</Text>
+            <View style={styles.sectorContainer}>
+              {SECTORS.map((s) => (
+                <TouchableOpacity
+                  key={s}
+                  style={[styles.sectorPill, sector === s && styles.sectorPillActive]}
+                  onPress={() => setSector(s)}
                 >
-                  <Picker.Item label="Select Organization" value="" />
-                  {organizations.map((org) => (
-                    <Picker.Item key={org.id} label={org.name} value={org.id} />
-                  ))}
-                </Picker>
-              </View>
-              {errors.organization && (
-                <Text style={styles.errorText}>{errors.organization}</Text>
-              )}
+                  <Text style={[styles.sectorText, sector === s && styles.sectorTextActive]}>
+                    {s}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          )}
+          </View>
         </View>
 
         <TouchableOpacity
@@ -226,13 +216,20 @@ const RegisterScreen = ({ navigation }) => {
           {isLoading ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text style={styles.buttonText}>Register</Text>
+            <>
+              <MaterialIcons name="person-add" size={18} color="#fff" />
+              <Text style={styles.buttonText}>Create Account</Text>
+            </>
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Login')} disabled={isLoading}>
+        <TouchableOpacity
+          style={styles.loginLink}
+          onPress={() => navigation.navigate('Login')}
+          disabled={isLoading}
+        >
           <Text style={styles.link}>
-            Already have an account? <Text style={styles.linkBold}>Login</Text>
+            Already have an account? <Text style={styles.linkBold}>Sign In</Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -241,23 +238,78 @@ const RegisterScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: COLORS.light },
   scrollContainer: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: 8, color: '#333' },
-  subtitle: { fontSize: 14, textAlign: 'center', marginBottom: 32, color: '#666' },
-  formContainer: { marginBottom: 24 },
+  header: { alignItems: 'center', marginBottom: 28 },
+  logoContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  title: { fontSize: 24, fontWeight: '700', color: COLORS.dark, marginBottom: 4 },
+  subtitle: { fontSize: 13, color: COLORS.muted },
+  formContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   fieldContainer: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 6, color: '#333' },
-  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 6, fontSize: 14, backgroundColor: '#fff', color: '#333' },
-  inputError: { borderColor: '#dc3545', backgroundColor: '#fff5f5' },
-  errorText: { marginTop: 4, fontSize: 12, color: '#dc3545' },
-  pickerContainer: { borderWidth: 1, borderColor: '#ddd', borderRadius: 6, backgroundColor: '#fff', overflow: 'hidden' },
-  button: { backgroundColor: '#007bff', padding: 14, borderRadius: 6, alignItems: 'center', marginBottom: 16 },
+  label: { fontSize: 13, fontWeight: '600', marginBottom: 8, color: COLORS.dark },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.light,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+    gap: 8,
+  },
+  inputError: { borderColor: COLORS.danger },
+  input: { flex: 1, fontSize: 14, color: COLORS.dark },
+  errorText: { marginTop: 4, fontSize: 12, color: COLORS.danger },
+  sectorContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  sectorPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.muted,
+    backgroundColor: '#fff',
+  },
+  sectorPillActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  sectorText: { fontSize: 13, color: COLORS.muted, fontWeight: '500' },
+  sectorTextActive: { color: '#fff' },
+  button: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.primary,
+    padding: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    gap: 8,
+  },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
-  link: { textAlign: 'center', color: '#666', fontSize: 14 },
-  linkBold: { color: '#007bff', fontWeight: '600' },
+  buttonText: { color: 'white', fontSize: 16, fontWeight: '700' },
+  loginLink: { alignItems: 'center' },
+  link: { textAlign: 'center', color: COLORS.muted, fontSize: 14 },
+  linkBold: { color: COLORS.primary, fontWeight: '700' },
 });
 
 export default RegisterScreen;
