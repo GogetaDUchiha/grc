@@ -98,13 +98,23 @@ export default function AssessmentDetailScreen({ route, navigation }) {
   }
 
   const scoreColor = getScoreColor(assessment.risk_score || 0);
-  const kris = assessment.kri_data
-    ? Object.entries(assessment.kri_data).map(([k, v]) => ({
-      name: k.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
-      value: `${v}`,
-      status: 'warning',
+
+  const kris = (assessment.kri_records && assessment.kri_records.length > 0)
+    ? assessment.kri_records.map(r => ({
+      name: r.kri_name,
+      value: `${r.raw_value} ${r.unit || ''}`.trim(),
+      status: r.band, // e.g. "Critical", "Warning", "Safe"
+      details: r.band_display,
     }))
-    : MOCK_KRIS;
+    : assessment.kri_data
+      ? Object.entries(assessment.kri_data).map(([k, v]) => ({
+        name: k.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        value: `${v}`,
+        status: 'Warning',
+      }))
+      : MOCK_KRIS;
+
+  const compliances = assessment.compliance_results || [];
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -151,16 +161,16 @@ export default function AssessmentDetailScreen({ route, navigation }) {
             <View key={i} style={styles.kriRow}>
               <Text style={styles.kriName}>{kri.name}</Text>
               <View style={[styles.kriValueBadge, {
-                backgroundColor: kri.status === 'success'
+                backgroundColor: kri.status === 'Safe'
                   ? 'rgba(16,185,129,0.1)'
-                  : kri.status === 'warning'
+                  : (kri.status === 'Warning' || kri.status === 'Watch')
                     ? 'rgba(245,158,11,0.1)'
                     : 'rgba(239,68,68,0.1)',
               }]}>
                 <Text style={[styles.kriValue, {
-                  color: kri.status === 'success'
+                  color: kri.status === 'Safe'
                     ? COLORS.success
-                    : kri.status === 'warning'
+                    : (kri.status === 'Warning' || kri.status === 'Watch')
                       ? COLORS.warning
                       : COLORS.danger,
                 }]}>{kri.value}</Text>
@@ -173,21 +183,31 @@ export default function AssessmentDetailScreen({ route, navigation }) {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <MaterialIcons name="verified-user" size={18} color={COLORS.primary} />
-            <Text style={styles.cardTitle}>Compliance Status</Text>
+            <Text style={styles.cardTitle}>Sector Compliance Frameworks</Text>
           </View>
-          {[
-            { regulation: 'PCI DSS', status: 'Partial', color: COLORS.warning },
-            { regulation: 'ISO 27001', status: 'Compliant', color: COLORS.success },
-            { regulation: 'NIST CSF', status: 'Review', color: '#ff8c00' },
-            { regulation: 'GDPR', status: 'Compliant', color: COLORS.success },
-          ].map((item) => (
-            <View key={item.regulation} style={styles.complianceRow}>
-              <Text style={styles.complianceName}>{item.regulation}</Text>
-              <View style={[styles.complianceBadge, { backgroundColor: item.color }]}>
-                <Text style={styles.complianceBadgeText}>{item.status}</Text>
+          {compliances.length > 0 ? compliances.map((item, idx) => {
+            const isCompliant = item.status === 'PASS';
+            const color = isCompliant ? COLORS.success : COLORS.danger;
+            return (
+              <View key={idx} style={styles.complianceRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.complianceName}>{item.regulation_name}</Text>
+                  {item.violated_kri_names && item.violated_kri_names.length > 0 && (
+                    <Text style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>
+                      Violations: {item.violated_kri_names.join(', ')}
+                    </Text>
+                  )}
+                </View>
+                <View style={[styles.complianceBadge, { backgroundColor: color }]}>
+                  <Text style={styles.complianceBadgeText}>{item.status_display || item.status}</Text>
+                </View>
               </View>
+            )
+          }) : (
+            <View style={{ padding: 16, alignItems: 'center' }}>
+              <Text style={{ color: COLORS.muted, fontSize: 13 }}>No compliance frameworks attached to this sector</Text>
             </View>
-          ))}
+          )}
         </View>
 
         {/* AI Insights Button */}

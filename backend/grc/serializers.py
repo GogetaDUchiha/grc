@@ -101,10 +101,15 @@ class AssessmentListSerializer(serializers.ModelSerializer):
 class AssessmentCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating assessments with KRI data"""
     kri_data = serializers.JSONField(write_only=True)
+    organization = serializers.PrimaryKeyRelatedField(read_only=True)
     
     class Meta:
         model = Assessment
         fields = ('organization', 'input_mode', 'uploaded_file', 'kri_data')
+
+    def create(self, validated_data):
+        validated_data.pop('kri_data', None)
+        return super().create(validated_data)
 
 
 class RegulationDBSerializer(serializers.ModelSerializer):

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -61,12 +62,15 @@ function getKriStatusColor(status) {
 export default function DashboardScreen({ navigation }) {
   const { logout } = useContext(AuthContext);
   const [assessments, setAssessments] = useState([]);
+  const [latestDetail, setLatestDetail] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [useMock, setUseMock] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const loadData = async () => {
     setIsLoading(true);
@@ -78,16 +82,28 @@ export default function DashboardScreen({ navigation }) {
         return;
       }
 
-      const response = await api.get(`/grc/assessments/`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000,
-      });
-      setAssessments(response.data || []);
+      const response = await api.get(`/grc/assessments/`);
+      let fetchedAssessments = response.data || [];
+      // Sort by newest
+      fetchedAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setAssessments(fetchedAssessments);
+
+      if (fetchedAssessments.length > 0) {
+        try {
+          const detailResponse = await api.get(`/grc/assessments/${fetchedAssessments[0].id}/`);
+          setLatestDetail(detailResponse.data);
+        } catch (e) {
+          setLatestDetail(null);
+        }
+      } else {
+        setLatestDetail(null);
+      }
+
       setUseMock(false);
     } catch (error) {
-      // Graceful fallback to mock data
-      setAssessments(MOCK_ASSESSMENTS);
-      setUseMock(true);
+      // Don't fallback to dummy data for real users on failure
+      setAssessments([]);
+      setUseMock(false);
     } finally {
       setIsLoading(false);
     }
@@ -174,7 +190,15 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.sectionTitle}>KRI Breakdown</Text>
           </View>
           <View style={styles.kriGrid}>
-            {MOCK_KRI.map((kri) => (
+            {latestDetail && latestDetail.kri_records ? latestDetail.kri_records.slice(0, 4).map((kri) => (
+              <View key={kri.kri_name} style={styles.kriItem}>
+                <View style={[styles.kriDot, { backgroundColor: getKriStatusColor(kri.band === 'Safe' ? 'success' : kri.band === 'Critical' ? 'danger' : 'warning') }]} />
+                <Text style={styles.kriLabel} numberOfLines={1}>{kri.kri_name}</Text>
+                <Text style={[styles.kriValue, { color: getKriStatusColor(kri.band === 'Safe' ? 'success' : kri.band === 'Critical' ? 'danger' : 'warning') }]}>
+                  {kri.raw_value.toFixed(1)}{kri.unit || ''}
+                </Text>
+              </View>
+            )) : MOCK_KRI.map((kri) => (
               <View key={kri.label} style={styles.kriItem}>
                 <View style={[styles.kriDot, { backgroundColor: getKriStatusColor(kri.status) }]} />
                 <Text style={styles.kriLabel}>{kri.label}</Text>
@@ -193,7 +217,19 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.sectionTitle}>Compliance Matrix</Text>
           </View>
           <View style={styles.complianceGrid}>
-            {[
+            {latestDetail && latestDetail.compliance_results ? latestDetail.compliance_results.map((item) => {
+              const isComp = item.status === 'PASS';
+              const color = isComp ? COLORS.success : COLORS.danger;
+              return (
+                <View key={item.regulation_name} style={styles.complianceItem}>
+                  <View style={[styles.complianceDot, { backgroundColor: color }]} />
+                  <View style={styles.complianceInfo}>
+                    <Text style={styles.complianceReg} numberOfLines={1}>{item.regulation_name}</Text>
+                    <Text style={[styles.complianceStatus, { color: color }]}>{item.status_display}</Text>
+                  </View>
+                </View>
+              )
+            }) : [
               { regulation: 'PCI DSS', status: 'Partial', color: COLORS.warning },
               { regulation: 'ISO 27001', status: 'Compliant', color: COLORS.success },
               { regulation: 'NIST CSF', status: 'Review', color: '#ff8c00' },
@@ -223,23 +259,37 @@ export default function DashboardScreen({ navigation }) {
               <Text style={styles.emptyStateSubtext}>Run an assessment to identify threats</Text>
             </View>
           ) : (
-            [
-              { risk: 'Unpatched Systems', severity: 'High', score: 78 },
-              { risk: 'Weak MFA Coverage', severity: 'Moderate', score: 55 },
-              { risk: 'Privileged Access', severity: 'Moderate', score: 48 },
-            ].map((item) => (
-              <View key={item.risk} style={styles.riskItem}>
-                <View style={styles.riskInfo}>
-                  <Text style={styles.riskName}>{item.risk}</Text>
-                  <View style={[styles.severityBadge, { backgroundColor: getRiskColor(item.severity) }]}>
-                    <Text style={styles.severityText}>{item.severity}</Text>
+            latestDetail && latestDetail.kri_records ?
+              latestDetail.kri_records.filter(r => r.band === 'Critical' || r.band === 'Warning').map((item) => (
+                <View key={item.kri_name} style={styles.riskItem}>
+                  <View style={styles.riskInfo}>
+                    <Text style={styles.riskName}>{item.kri_name}</Text>
+                    <View style={[styles.severityBadge, { backgroundColor: item.band === 'Critical' ? COLORS.danger : COLORS.warning }]}>
+                      <Text style={styles.severityText}>{item.band}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.riskBar}>
+                    <View style={[styles.riskBarFill, { width: `${Math.min(item.normalized_score * 100, 100)}%`, backgroundColor: item.band === 'Critical' ? COLORS.danger : COLORS.warning }]} />
                   </View>
                 </View>
-                <View style={styles.riskBar}>
-                  <View style={[styles.riskBarFill, { width: `${item.score}%`, backgroundColor: getRiskColor(item.severity) }]} />
+              ))
+              : [
+                { risk: 'Unpatched Systems', severity: 'High', score: 78 },
+                { risk: 'Weak MFA Coverage', severity: 'Moderate', score: 55 },
+                { risk: 'Privileged Access', severity: 'Moderate', score: 48 },
+              ].map((item) => (
+                <View key={item.risk} style={styles.riskItem}>
+                  <View style={styles.riskInfo}>
+                    <Text style={styles.riskName}>{item.risk}</Text>
+                    <View style={[styles.severityBadge, { backgroundColor: getRiskColor(item.severity) }]}>
+                      <Text style={styles.severityText}>{item.severity}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.riskBar}>
+                    <View style={[styles.riskBarFill, { width: `${item.score}%`, backgroundColor: getRiskColor(item.severity) }]} />
+                  </View>
                 </View>
-              </View>
-            ))
+              ))
           )}
         </View>
 

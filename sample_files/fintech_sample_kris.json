@@ -1,0 +1,11 @@
+{
+  "mfa_percentage": 95,
+  "patch_delay_days": 12,
+  "encryption_percentage": 100,
+  "failed_login_rate": 2.5,
+  "privileged_accounts": 15,
+  "incident_response_time": 4,
+  "ddos_protection_enabled": true,
+  "third_party_vendor_risk_score": 85,
+  "annual_security_training_completion_percentage": 92
+}

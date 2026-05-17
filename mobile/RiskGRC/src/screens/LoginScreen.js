@@ -8,9 +8,6 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -69,12 +66,10 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-  // Demo login — bypasses backend
   const handleDemoLogin = async () => {
     setIsLoading(true);
     try {
       await AsyncStorage.setItem('apiUrl', 'http://localhost:8000/api');
-      // Use mock token for demo
       await login('demo_access_token', 'demo_refresh_token');
     } finally {
       setIsLoading(false);
@@ -82,281 +77,284 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <div style={{
+      width: '100%',
+      height: '100vh',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      backgroundColor: COLORS.light,
+      WebkitOverflowScrolling: 'touch',
+    }}>
+      <div style={{
+        maxWidth: 500,
+        margin: '0 auto',
+        padding: '20px',
+        paddingTop: '40px',
+        paddingBottom: '60px',
+      }}>
         {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            backgroundColor: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          }}>
             <MaterialIcons name="security" size={48} color={COLORS.primary} />
-          </View>
-          <Text style={styles.title}>RiskGRC</Text>
-          <Text style={styles.subtitle}>AI-Powered GRC Platform</Text>
-        </View>
+          </div>
+          <h1 style={{
+            fontSize: 28,
+            fontWeight: '700',
+            color: COLORS.dark,
+            marginBottom: 4,
+            marginTop: 0,
+          }}>RiskGRC</h1>
+          <p style={{
+            fontSize: 14,
+            color: COLORS.muted,
+            margin: 0,
+          }}>AI-Powered GRC Platform</p>
+        </div>
 
         {/* Form */}
-        <View style={styles.formContainer}>
+        <div style={{
+          backgroundColor: '#fff',
+          borderRadius: 16,
+          padding: 24,
+          marginBottom: 24,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        }}>
           {/* Email Field */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Email Address</Text>
-            <View style={[styles.inputWrapper, errors.email && styles.inputWrapperError]}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: COLORS.dark,
+              marginBottom: 8,
+              display: 'block',
+            }}>Email Address</label>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: errors.email ? COLORS.danger : '#e5e7eb',
+              borderRadius: 10,
+              padding: '12px',
+              backgroundColor: '#fff',
+              gap: 8,
+            }}>
               <MaterialIcons name="email" size={20} color={COLORS.muted} />
-              <TextInput
-                style={styles.input}
+              <input
+                type="email"
                 placeholder="name@company.com"
                 value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
+                onChange={(e) => {
+                  setEmail(e.target.value);
                   if (errors.email) setErrors({ ...errors, email: '' });
                 }}
-                editable={!isLoading}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                placeholderTextColor={COLORS.muted}
+                disabled={isLoading}
+                style={{
+                  flex: 1,
+                  fontSize: 15,
+                  color: COLORS.dark,
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                }}
               />
-            </View>
-            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-          </View>
+            </div>
+            {errors.email && <p style={{
+              fontSize: 12,
+              color: COLORS.danger,
+              marginTop: 4,
+            }}>{errors.email}</p>}
+          </div>
 
           {/* Password Field */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Password</Text>
-            <View style={[styles.inputWrapper, errors.password && styles.inputWrapperError]}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: COLORS.dark,
+              marginBottom: 8,
+              display: 'block',
+            }}>Password</label>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: errors.password ? COLORS.danger : '#e5e7eb',
+              borderRadius: 10,
+              padding: '12px',
+              backgroundColor: '#fff',
+              gap: 8,
+            }}>
               <MaterialIcons name="lock" size={20} color={COLORS.muted} />
-              <TextInput
-                style={styles.input}
+              <input
+                type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
+                onChange={(e) => {
+                  setPassword(e.target.value);
                   if (errors.password) setErrors({ ...errors, password: '' });
                 }}
-                editable={!isLoading}
-                secureTextEntry={!showPassword}
-                placeholderTextColor={COLORS.muted}
+                disabled={isLoading}
+                style={{
+                  flex: 1,
+                  fontSize: 15,
+                  color: COLORS.dark,
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                }}
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <button
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
                 <MaterialIcons
                   name={showPassword ? 'visibility' : 'visibility-off'}
                   size={20}
                   color={COLORS.muted}
                 />
-              </TouchableOpacity>
-            </View>
-            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-          </View>
+              </button>
+            </div>
+            {errors.password && <p style={{
+              fontSize: 12,
+              color: COLORS.danger,
+              marginTop: 4,
+            }}>{errors.password}</p>}
+          </div>
 
           {/* Login Button */}
-          <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-            onPress={handleLogin}
+          <button
+            onClick={handleLogin}
             disabled={isLoading}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              width: '100%',
+              backgroundColor: COLORS.primary,
+              padding: '14px',
+              borderRadius: 10,
+              border: 'none',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              opacity: isLoading ? 0.6 : 1,
+              marginTop: 8,
+            }}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <>
                 <MaterialIcons name="login" size={20} color="#fff" />
-                <Text style={styles.loginButtonText}>Sign In</Text>
+                <span style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Sign In</span>
               </>
             )}
-          </TouchableOpacity>
+          </button>
 
           {/* Demo Button */}
-          <TouchableOpacity
-            style={styles.demoButton}
-            onPress={handleDemoLogin}
+          <button
+            onClick={handleDemoLogin}
             disabled={isLoading}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              width: '100%',
+              backgroundColor: '#fff',
+              border: `1px solid ${COLORS.primary}`,
+              padding: '12px',
+              borderRadius: 10,
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              marginTop: 10,
+            }}
           >
             <MaterialIcons name="play-circle-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.demoButtonText}>Try Demo (No Backend Needed)</Text>
-          </TouchableOpacity>
+            <span style={{ color: COLORS.primary, fontWeight: '600', fontSize: 14 }}>
+              Try Demo (No Backend Needed)
+            </span>
+          </button>
 
           {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            margin: '20px 0',
+          }}>
+            <div style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
+            <span style={{ margin: '0 12px', color: COLORS.muted, fontSize: 12, fontWeight: '500' }}>or</span>
+            <div style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
+          </div>
 
-          {/* Register Link */}
-          <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLink}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          {/* Register Button - NOW VISIBLE */}
+          <button
+            onClick={() => navigation.navigate('Register')}
+            disabled={isLoading}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              width: '100%',
+              backgroundColor: '#fff',
+              border: `2px solid ${COLORS.primary}`,
+              padding: '14px',
+              borderRadius: 10,
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            <MaterialIcons name="person-add" size={18} color={COLORS.primary} />
+            <span style={{ color: COLORS.primary, fontWeight: '700', fontSize: 16 }}>
+              Create New Account
+            </span>
+          </button>
+        </div>
 
         {/* Dev Info */}
-        <View style={styles.devInfo}>
-          <Text style={styles.devText}>Demo Credentials:</Text>
-          <Text style={styles.devCredential}>Email: demo@example.com</Text>
-          <Text style={styles.devCredential}>Password: demo1234</Text>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <div style={{
+          backgroundColor: '#fff',
+          borderRadius: 12,
+          padding: 12,
+          borderLeft: `4px solid #f59e0b`,
+          marginBottom: 20,
+        }}>
+          <p style={{
+            fontSize: 12,
+            fontWeight: '600',
+            color: COLORS.dark,
+            marginBottom: 4,
+            marginTop: 0,
+          }}>Demo Credentials:</p>
+          <p style={{
+            fontSize: 11,
+            color: COLORS.muted,
+            fontFamily: 'monospace',
+            margin: 0,
+          }}>Email: demo@example.com</p>
+          <p style={{
+            fontSize: 11,
+            color: COLORS.muted,
+            fontFamily: 'monospace',
+            margin: 0,
+          }}>Password: demo1234</p>
+        </div>
+      </div>
+    </div>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.light,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.dark,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.muted,
-  },
-  formContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
-  },
-  fieldContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.dark,
-    marginBottom: 8,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.light,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    gap: 8,
-  },
-  inputWrapperError: {
-    borderColor: COLORS.danger,
-    backgroundColor: 'rgba(239, 68, 68, 0.05)',
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.dark,
-  },
-  errorText: {
-    fontSize: 12,
-    color: COLORS.danger,
-    marginTop: 4,
-  },
-  loginButton: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    gap: 8,
-  },
-  loginButtonDisabled: {
-    opacity: 0.6,
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  demoButton: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    gap: 8,
-  },
-  demoButtonText: {
-    color: COLORS.primary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.light,
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    color: COLORS.muted,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  registerText: {
-    fontSize: 14,
-    color: COLORS.muted,
-  },
-  registerLink: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  devInfo: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.warning,
-  },
-  devText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.dark,
-    marginBottom: 4,
-  },
-  devCredential: {
-    fontSize: 11,
-    color: COLORS.muted,
-    fontFamily: 'monospace',
-  },
-});
 
 export default LoginScreen;

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import COLORS from '../constants/colors';
 import {
   View,
@@ -23,33 +24,38 @@ const AssessmentScreen = ({ navigation }) => {
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [organizations, setOrganizations] = useState([]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
-  const loadData = async () => {
+  const loadData = async (orgOverride = null) => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('access_token');
       // Load organizations
-      const orgsRes = await api.get(`/accounts/organizations/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const orgsRes = await api.get(`/accounts/organizations/`);
       setOrganizations(orgsRes.data);
-      if (!selectedOrg && orgsRes.data.length > 0) {
-        setSelectedOrg(orgsRes.data[0]);
+
+      let currentOrg = orgOverride || selectedOrg;
+      if (!currentOrg && orgsRes.data.length > 0) {
+        currentOrg = orgsRes.data[0];
+        setSelectedOrg(currentOrg);
       }
 
-      // Load assessments if org is selected
-      if (selectedOrg) {
-        const assessRes = await api.get(`/grc/assessments/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setAssessments(assessRes.data);
+      // Load all assessments and locally filter
+      const assessRes = await api.get(`/grc/assessments/`);
+      let allAssessments = assessRes.data || [];
+      if (currentOrg) {
+        allAssessments = allAssessments.filter(a => a.organization === currentOrg.id);
       }
+      // sort by newest
+      allAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      setAssessments(allAssessments);
     } catch (error) {
       console.error('Error loading assessments:', error);
-      Alert.alert('Error', 'Failed to load assessments');
     } finally {
       setIsLoading(false);
     }
@@ -136,7 +142,7 @@ const AssessmentScreen = ({ navigation }) => {
                   }}
                   onPress={() => {
                     setSelectedOrg(org);
-                    loadData();
+                    loadData(org);
                   }}
                 >
                   <Text

@@ -15,10 +15,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import COLORS from '../constants/colors';
+import { AuthContext } from '../context/AuthContext';
+import { useContext } from 'react';
 
 const SECTORS = ['Fintech', 'Banking', 'Telecom', 'Government', 'IT'];
 
 const RegisterScreen = ({ navigation }) => {
+  const { login } = useContext(AuthContext);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -52,24 +56,36 @@ const RegisterScreen = ({ navigation }) => {
     if (!validateInputs()) return;
     setIsLoading(true);
     try {
+      const nameParts = name.trim().split(' ');
+      const first_name = nameParts[0] || '';
+      const last_name = nameParts.slice(1).join(' ') || '';
+
       const response = await api.post(`/accounts/register/`, {
         email: email.trim(),
+        first_name,
+        last_name,
         phone: phone.trim(),
         password,
         sector,
       });
 
       if (response.data?.tokens?.access) {
-        await AsyncStorage.setItem('access_token', response.data.tokens.access);
-        await AsyncStorage.setItem('refresh_token', response.data.tokens.refresh);
         setGlobalError('');
-        Alert.alert('Success', 'Account created! Please login.', [
-          { text: 'OK', onPress: () => navigation.navigate('Login') },
-        ]);
+        if (Platform.OS === 'web') {
+          login(response.data.tokens.access, response.data.tokens.refresh);
+        } else {
+          Alert.alert('Success', 'Account created! Redirecting to dashboard...', [
+            { text: 'OK', onPress: () => login(response.data.tokens.access, response.data.tokens.refresh) },
+          ]);
+        }
       } else {
-        Alert.alert('Success', 'Account created! Please login.', [
-          { text: 'OK', onPress: () => navigation.navigate('Login') },
-        ]);
+        if (Platform.OS === 'web') {
+          navigation.navigate('Login');
+        } else {
+          Alert.alert('Success', 'Account created! Please login.', [
+            { text: 'OK', onPress: () => navigation.navigate('Login') },
+          ]);
+        }
       }
     } catch (error) {
       const errorData = error?.response?.data || {};
@@ -96,7 +112,11 @@ const RegisterScreen = ({ navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -107,6 +127,22 @@ const RegisterScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.formContainer}>
+          {/* Name */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Full Name</Text>
+            <View style={styles.inputWrapper}>
+              <MaterialIcons name="person" size={18} color={COLORS.muted} />
+              <TextInput
+                style={styles.input}
+                placeholder="John Doe"
+                value={name}
+                onChangeText={setName}
+                editable={!isLoading}
+                placeholderTextColor={COLORS.muted}
+              />
+            </View>
+          </View>
+
           {/* Email */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Email Address *</Text>
@@ -258,8 +294,21 @@ const RegisterScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.light },
-  scrollContainer: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContainer: {
+    flex: 1,
+    ...(Platform.OS === 'web' && {
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
+    }),
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+    flexGrow: 1,
+    ...(Platform.OS === 'web' && {
+      minHeight: '100%',
+    }),
+  },
   header: { alignItems: 'center', marginBottom: 28 },
   logoContainer: {
     width: 70,

@@ -6,121 +6,95 @@ A mobile-first, AI-powered GRC platform designed for cybersecurity professionals
 
 ### Version 1.0 - Complete Core Feature Set
 - [x] Multi-org authentication with JWT
-- [x] Sector-specific compliance engine
+- [x] Sector-specific compliance framework evaluations
+- [x] Automated CSV & JSON File Parsing for Log ingestion
 - [x] KRI normalization engine
 - [x] Risk scoring engine
-- [x] Compliance checking engine
-- [x] Gemini AI integration
-- [x] React Native mobile app (Expo)
+- [x] Gemini AI insights integration
+- [x] React Native app (Expo) with fully responsive Web UI
 - [x] Django REST backend
-- [x] Database models & migrations
-- [x] Web support via Expo
+- [x] Database models & dynamic API routing
 
-## Quick Start - Running the Project
+---
 
-### 1️⃣ Start Backend
+## 🚀 Quick Start - Exact Setup Guide
+
+Follow these exact steps from your root directory to launch the Backend API and the frontend Web platform.
+
+### 1️⃣ Start the Backend (Django API)
+
+Open your terminal and run these commands to isolate and boot your python server:
 
 ```bash
-cd backend
+# 1. Navigate into the backend repository
+cd backend/
 
-# Install dependencies (one-time)
+# 2. Create the Python Virtual Environment (venv)
+python3 -m venv venv
+
+# 3. Activate the virtual environment
+# For Linux/macOS:
+source venv/bin/activate
+# For Windows (Command Prompt):
+# venv\Scripts\activate
+
+# 4. Install dependencies
 pip install -r requirements.txt
 
-# Create demo user (optional)
-python manage.py shell
-```
+# 5. Apply Database Migrations
+python manage.py makemigrations
+python manage.py migrate
 
-Then in Python shell:
-```python
-from django.contrib.auth.models import User
-from accounts.models import Organization, UserOrganization
-
-user = User.objects.create_user(
-    username='demo',
-    email='demo@example.com',
-    password='Demo1234!'
-)
-
-org = Organization.objects.create(
-    name='Demo Fintech Company',
-    sector='Fintech',
-    owner=user
-)
-
-UserOrganization.objects.create(user=user, organization=org, role='admin')
-exit()
-```
-
-Then start server:
-```bash
+# 6. Start the Django Server
 python manage.py runserver 0.0.0.0:8000
 ```
 
-✅ Backend running at: `http://localhost:8000/api`
+✅ Your Backend API is now running successfully at: `http://localhost:8000/api`
+*(Note: Leave this terminal tab running and open a new tab for Step 2)*
 
-### 2️⃣ Start Frontend
+---
+
+### 2️⃣ Start the Frontend (React Native + Expo Web)
+
+Open a **NEW** terminal and run these commands to start the User Interface:
 
 ```bash
-cd mobile/RiskGRC
+# 1. Navigate into the frontend repository
+cd mobile/RiskGRC/
 
-# Install dependencies (one-time)
+# 2. Make sure your environment mappings exist
+# (This ensures the frontend targets your local Django server)
+echo "EXPO_PUBLIC_API_URL=http://localhost:8000/api" > .env
+
+# 3. Install all Javascript/NPM dependencies
 npm install
 
-# Start web version
-npm run web
+# 4. Start the Expo Web App
+npx expo start --web
 ```
 
-✅ Frontend opens automatically at: `http://localhost:19006`
+✅ Your browser will automatically pop open hosting the RiskGRC Web portal (typically at `http://localhost:8081`). 
 
-## Testing the Application
+---
 
-### Login Credentials
+## 🔍 How to Test the Product Features
 
-```
-Email: demo@example.com
-Password: Demo1234!
-```
+1. **Register** a brand new account under the `Sign Up` screen.
+2. Ensure you select a **Sector** (e.g., Fintech, Banking) to bind your regulatory frameworks.
+3. Once logged into the empty **Dashboard**, click the big blue **"New Assessment"** button.
+4. **Log Analysis Engine:**
+   - Go to the **Upload Logs** tab.
+   - Attach our test files located in `sample_files/fintech_sample_kris.csv` or `.json`.
+   - Click "Calculate Risk Score From File" to submit the parsed payload to the Django server.
+5. **View Results Dashboard:** You will instantly see your dynamic sector compliance (e.g., passing/failing SBP or SECP frameworks based on your specific uploaded data), your KRI breakdown, and generated AI Agent threat mitigation strategies.
 
-### Test Flow
+---
 
-1. **Register** new account in app or use demo credentials
-2. **Create Assessment** 
-   - Fill KRI values manually or leave defaults
-   - Select organization and sector
-   - Submit
-3. **View Results**
-   - Risk score (0-100)
-   - Compliance status by regulation
-   - AI-generated insights
-4. **Export Report** (web only currently)
-5. **Manage Organizations** from Organizations tab
-
-## Feature Overview
-
-### ✅ Completed Features
-
-| Feature | Status | Details |
-|---------|--------|---------|
-| User Authentication | ✅ Complete | JWT tokens, email-based login, registration |
-| Multi-Organization | ✅ Complete | Create multiple orgs, switch between them |
-| Sector Selection | ✅ Complete | Fintech, Banking, Telecom, Government, IT |
-| Manual KRI Input | ✅ Complete | 10 KRI metrics with validation |
-| File Upload | ✅ Complete | CSV/JSON log parsing ready |
-| KRI Engine | ✅ Complete | Normalization to 0-100 scale |
-| Risk Engine | ✅ Complete | Weighted composite scoring |
-| Compliance Engine | ✅ Complete | Regulation-specific rule checking |
-| AI Agent | ✅ Complete | Gemini integration with fallback rules |
-| Dashboard | ✅ Complete | Risk score, KRI breakdown, compliance matrix |
-| Reports | ✅ Complete | PDF export ready (implement weasyprint) |
-| Mobile App | ✅ Complete | React Native + Expo |
-| Web Support | ✅ Complete | Works in `npx expo start --web` |
-| Production Ready | ✅ Complete | Docker support, environment config |
-
-### 📋 Regulations Supported
+## 📋 Regulations Evaluated
 
 **Fintech**
 - SBP Regulatory Sandbox Guidelines
-- SECP FinTech Regulations  
+- SECP FinTech Regulations
 - PTA Data Protection Guidelines
 
 **Banking**
@@ -131,110 +105,8 @@ Password: Demo1234!
 - PTA Cybersecurity Regulations
 - nCERT Baseline Security Standard
 
-**Government**
-- nCERT Baseline Security Standard
-- NTC Guidelines
+## 📦 Production Deployment Preparation
 
-**IT/Corporate**
-- ISO 27001 (Pakistan mapping)
-- PTA Data Guidelines
-
-## Project Structure
-
-4. Run migrations:
-   ```bash
-   python manage.py makemigrations
-   python manage.py migrate
-   ```
-
-5. Create superuser:
-   ```bash
-   python manage.py createsuperuser
-   ```
-
-6. Run server:
-   ```bash
-   python manage.py runserver
-   ```
-
-### Mobile App Setup
-
-1. Navigate to mobile app directory:
-   ```bash
-   cd mobile/RiskGRC
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. For Android:
-   ```bash
-   npx react-native run-android
-   ```
-
-4. For iOS (macOS only):
-   ```bash
-   npx react-native run-ios
-   ```
-
-### Docker Deployment
-
-1. From root directory:
-   ```bash
-   docker-compose up --build
-   ```
-
-2. Backend will be available at http://localhost:8000
-
-3. Mobile APK will be built and available in `./mobile-output/riskgrc.apk`
-
-## API Endpoints
-
-- `POST /api/accounts/register/` - User registration
-- `POST /api/accounts/login/` - User login
-- `GET /api/accounts/organizations/` - List organizations
-- `GET /api/grc/assessments/` - List assessments
-- `POST /api/grc/assessments/create/` - Create assessment
-- `GET /api/grc/assessments/<id>/` - Get assessment details
-- `GET /api/ai/recommendations/<assessment_id>/` - Get AI recommendations
-
-## Usage
-
-1. For full Docker deployment: Run `docker-compose up --build` to build and run backend, and generate mobile APK.
-2. For local development: Follow backend and mobile setup sections above.
-3. Register/Login with your organization and sector.
-4. Create a new assessment by inputting security metrics.
-5. View risk score, compliance status, and AI recommendations on the dashboard.
-6. Generate and export reports.
-
-## Deployment to App Stores
-
-### Android
-
-1. Build release APK:
-   ```bash
-   cd mobile/RiskGRC/android
-   ./gradlew assembleRelease
-   ```
-
-2. Upload `app/build/outputs/apk/release/app-release.apk` to Google Play Console.
-
-### iOS
-
-1. Open Xcode project in `mobile/RiskGRC/ios/RiskGRC.xcworkspace`
-2. Build and archive for release.
-3. Upload to App Store Connect.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit changes
-4. Push to branch
-5. Create Pull Request
-
-## License
-
-MIT License - see LICENSE file for details
+When you are ready to publish:
+- Create an `.env.production` inside the `RiskGRC` frontend directory and point `EXPO_PUBLIC_API_URL` to your live domain alias.
+- Inside Django `settings.py`, convert `DEBUG = False`, allow-list your live hosts under `ALLOWED_HOSTS`, and boot with your choice of `WSGI` servers (like Gunicorn) instead of `runserver`.
