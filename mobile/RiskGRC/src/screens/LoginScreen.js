@@ -66,15 +66,7 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setIsLoading(true);
-    try {
-      await AsyncStorage.setItem('apiUrl', 'http://localhost:8000/api');
-      await login('demo_access_token', 'demo_refresh_token');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
 
   return (
     <div style={{
@@ -265,29 +257,7 @@ const LoginScreen = ({ navigation }) => {
             )}
           </button>
 
-          {/* Demo Button */}
-          <button
-            onClick={handleDemoLogin}
-            disabled={isLoading}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              width: '100%',
-              backgroundColor: '#fff',
-              border: `1px solid ${COLORS.primary}`,
-              padding: '12px',
-              borderRadius: 10,
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              marginTop: 10,
-            }}
-          >
-            <MaterialIcons name="play-circle-outline" size={18} color={COLORS.primary} />
-            <span style={{ color: COLORS.primary, fontWeight: '600', fontSize: 14 }}>
-              Try Demo (No Backend Needed)
-            </span>
-          </button>
+
 
           {/* Divider */}
           <div style={{
@@ -324,34 +294,7 @@ const LoginScreen = ({ navigation }) => {
           </button>
         </div>
 
-        {/* Dev Info */}
-        <div style={{
-          backgroundColor: '#fff',
-          borderRadius: 12,
-          padding: 12,
-          borderLeft: `4px solid #f59e0b`,
-          marginBottom: 20,
-        }}>
-          <p style={{
-            fontSize: 12,
-            fontWeight: '600',
-            color: COLORS.dark,
-            marginBottom: 4,
-            marginTop: 0,
-          }}>Demo Credentials:</p>
-          <p style={{
-            fontSize: 11,
-            color: COLORS.muted,
-            fontFamily: 'monospace',
-            margin: 0,
-          }}>Email: demo@example.com</p>
-          <p style={{
-            fontSize: 11,
-            color: COLORS.muted,
-            fontFamily: 'monospace',
-            margin: 0,
-          }}>Password: demo1234</p>
-        </div>
+
       </div>
     </div>
   );

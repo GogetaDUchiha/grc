@@ -1,0 +1,36 @@
+=== RiskGRC FinTech Security Assessment Report ===
+
+Organization: ApexPay Microfinance Ltd.
+Sector: FinTech
+Assessment Period: Q2 2026
+
+The organization recently completed a cybersecurity posture review focused on governance, risk, and compliance controls relevant to Pakistan’s fintech ecosystem.
+
+Key findings from the review are summarized below:
+
+- Multi-factor authentication (MFA) adoption across employee accounts is currently at 94%.
+- Critical security patches are typically deployed within 11 days after release.
+- All customer-sensitive databases and storage systems are encrypted using AES-256 standards.
+- Failed authentication attempts represent approximately 3.1% of all login activity observed this month.
+- The organization currently maintains 18 privileged/admin-level accounts.
+- Average incident response and containment time is estimated at 5 hours.
+- Distributed Denial of Service (DDoS) mitigation services are active and operational through the upstream provider.
+- Third-party vendor cyber risk was assessed as HIGH with a calculated risk score of 81/100.
+- Annual cybersecurity awareness training completion has reached 89% among staff members.
+
+Additional Notes:
+- Several phishing attempts targeting finance employees were reported during April 2026.
+- No major ransomware incidents were detected during the reporting period.
+- Legacy VPN infrastructure is still used by a small subset of remote contractors.
+- API gateways are protected through rate limiting and IP reputation filtering.
+- SIEM alerts showed elevated brute-force attempts originating from foreign IP ranges.
+
+Compliance Mapping:
+- SBP Cybersecurity Framework: PARTIALLY COMPLIANT
+- SECP FinTech Regulations: COMPLIANT
+- PTA Data Protection Guidelines: COMPLIANT WITH OBSERVATIONS
+
+Risk Summary:
+The institution demonstrates a mature baseline cybersecurity posture but retains moderate operational risk due to vendor exposure and delayed patch deployment windows.
+
+=== End of Report ===

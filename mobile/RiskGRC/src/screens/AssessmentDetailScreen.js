@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,44 +29,28 @@ function getScoreColor(score) {
   return COLORS.success;
 }
 
-const MOCK_KRIS = [
-  { name: 'MFA Coverage', value: '78%', status: 'warning' },
-  { name: 'Patch Delay', value: '12 days', status: 'danger' },
-  { name: 'Encryption', value: '91%', status: 'success' },
-  { name: 'Failed Logins', value: '3.2%', status: 'success' },
-  { name: 'Privileged Accts', value: '15', status: 'warning' },
-  { name: 'Incident Response', value: '4.5 hrs', status: 'warning' },
-];
+const MOCK_KRIS = [];
 
 export default function AssessmentDetailScreen({ route, navigation }) {
   // Support both { assessment } and { id } params
   const { assessment: passedAssessment, id } = route.params || {};
 
+  // Check if passedAssessment is just a list item (lacks advanced fields)
+  const isMinimal = passedAssessment && !passedAssessment.likelihood_score;
+
   const [assessment, setAssessment] = useState(passedAssessment || null);
-  const [isLoading, setIsLoading] = useState(!passedAssessment && !!id);
+  const [isLoading, setIsLoading] = useState((!passedAssessment && !!id) || isMinimal);
 
   useEffect(() => {
-    if (!passedAssessment && id) {
-      fetchAssessment(id);
+    if ((!passedAssessment && id) || isMinimal) {
+      fetchAssessment(id || passedAssessment?.id);
     }
-  }, [id]);
+  }, [id, passedAssessment]);
 
   const fetchAssessment = async (assessmentId) => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('access_token');
-      if (token === 'demo_access_token') {
-        setAssessment({
-          id: assessmentId,
-          organization_name: 'Demo Org',
-          risk_score: 55.5,
-          risk_level: 'Moderate',
-          input_mode: 'manual',
-          created_at: new Date().toISOString(),
-        });
-        return;
-      }
-
       const response = await api.get(`/grc/assessments/${assessmentId}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -133,6 +118,20 @@ export default function AssessmentDetailScreen({ route, navigation }) {
             weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
           })}
         </Text>
+        <View style={styles.advancedStats}>
+          <View style={styles.statBox}>
+            <Text style={styles.statVal}>{(assessment.likelihood_score * 10).toFixed(1)}/10</Text>
+            <Text style={styles.statLab}>Likelihood</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statVal}>{(assessment.impact_score * 10).toFixed(1)}/10</Text>
+            <Text style={styles.statLab}>Impact</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statVal}>{(assessment.exploitability_score * 10).toFixed(1)}/10</Text>
+            <Text style={styles.statLab}>Exploitability</Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -150,6 +149,17 @@ export default function AssessmentDetailScreen({ route, navigation }) {
             <Text style={styles.metaValue}>#{assessment.id}</Text>
           </View>
         </View>
+
+        {/* Action Button: Download PDF */}
+        <TouchableOpacity
+          style={styles.downloadBtn}
+          onPress={() => {
+            Linking.openURL(`${api.defaults.baseURL}/grc/assessments/${assessment.id}/export_pdf/`);
+          }}
+        >
+          <MaterialIcons name="picture-as-pdf" size={20} color="#fff" />
+          <Text style={styles.downloadBtnText}>Generate Professional Audit Report</Text>
+        </TouchableOpacity>
 
         {/* KRI Table */}
         <View style={styles.card}>
@@ -179,34 +189,34 @@ export default function AssessmentDetailScreen({ route, navigation }) {
           ))}
         </View>
 
-        {/* Compliance Status */}
+        {/* Evidence-to-Control Mapping (v2) */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <MaterialIcons name="verified-user" size={18} color={COLORS.primary} />
-            <Text style={styles.cardTitle}>Sector Compliance Frameworks</Text>
+            <MaterialIcons name="account-tree" size={18} color={COLORS.primary} />
+            <Text style={styles.cardTitle}>AI Evidence-to-Control Mapping</Text>
           </View>
-          {compliances.length > 0 ? compliances.map((item, idx) => {
-            const isCompliant = item.status === 'PASS';
-            const color = isCompliant ? COLORS.success : COLORS.danger;
-            return (
-              <View key={idx} style={styles.complianceRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.complianceName}>{item.regulation_name}</Text>
-                  {item.violated_kri_names && item.violated_kri_names.length > 0 && (
-                    <Text style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>
-                      Violations: {item.violated_kri_names.join(', ')}
-                    </Text>
-                  )}
-                </View>
-                <View style={[styles.complianceBadge, { backgroundColor: color }]}>
-                  <Text style={styles.complianceBadgeText}>{item.status_display || item.status}</Text>
-                </View>
+          {assessment.control_results && assessment.control_results.length > 0 ? assessment.control_results.map((res, rid) => (
+            <View key={rid} style={styles.controlMappingCard}>
+              <View style={styles.controlHeader}>
+                <Text style={styles.controlId}>{res.control_details.control_id}</Text>
+                <Text style={[styles.controlStatus, { color: res.status === 'Compliant' ? COLORS.success : res.status === 'Partial' ? COLORS.warning : COLORS.danger }]}>{res.status}</Text>
               </View>
-            )
-          }) : (
-            <View style={{ padding: 16, alignItems: 'center' }}>
-              <Text style={{ color: COLORS.muted, fontSize: 13 }}>No compliance frameworks attached to this sector</Text>
+              <Text style={styles.controlTitle}>{res.control_details.title}</Text>
+              <View style={styles.aiAnalysisBox}>
+                <Text style={styles.aiAnalysisLabel}>AI Reasoning:</Text>
+                <Text style={styles.aiAnalysisText}>{res.ai_analysis}</Text>
+              </View>
+              <View style={styles.evidenceLine}>
+                <Text style={styles.evidenceLabel}>Evidence:</Text>
+                <Text style={styles.evidenceText}>{res.evidence}</Text>
+              </View>
+              <View style={styles.mappingFooter}>
+                <Text style={styles.confidenceText}>Confidence: {res.confidence_score}%</Text>
+                <Text style={styles.impactText}>Risk Impact: {res.risk_impact}</Text>
+              </View>
             </View>
+          )) : (
+            <Text style={styles.noDataText}>No detailed control mapping available for this legacy assessment.</Text>
           )}
         </View>
 
@@ -298,6 +308,168 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    marginTop: 8,
   },
   aiButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  complianceCard: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.light,
+    paddingBottom: 16,
+  },
+  complianceStatusText: {
+    fontSize: 11,
+    color: COLORS.muted,
+    marginTop: 2,
+  },
+  evidenceTable: {
+    marginTop: 12,
+    backgroundColor: COLORS.light,
+    borderRadius: 8,
+    padding: 10,
+  },
+  evidenceHeader: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+    paddingBottom: 6,
+    marginBottom: 6,
+  },
+  evidenceHeaderText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.muted,
+    textTransform: 'uppercase',
+  },
+  evidenceRow: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  evidenceCell: {
+    fontSize: 11,
+    color: COLORS.dark,
+  },
+  advancedStats: {
+    flexDirection: 'row',
+    marginTop: 16,
+    gap: 12,
+    justifyContent: 'center',
+  },
+  statBox: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    minWidth: 80,
+  },
+  statVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.dark,
+  },
+  statLab: {
+    fontSize: 10,
+    color: COLORS.muted,
+    textTransform: 'uppercase',
+  },
+  downloadBtn: {
+    flexDirection: 'row',
+    backgroundColor: '#1e293b',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  downloadBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  controlMappingCard: {
+    backgroundColor: COLORS.light,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  controlHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  controlId: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  controlStatus: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  controlTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.dark,
+    marginBottom: 8,
+  },
+  aiAnalysisBox: {
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+  },
+  aiAnalysisLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.muted,
+    marginBottom: 2,
+  },
+  aiAnalysisText: {
+    fontSize: 11,
+    color: COLORS.dark,
+    lineHeight: 16,
+  },
+  evidenceLine: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 8,
+  },
+  evidenceLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.muted,
+  },
+  evidenceText: {
+    fontSize: 11,
+    color: COLORS.dark,
+    flex: 1,
+  },
+  mappingFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingTop: 8,
+  },
+  confidenceText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.success,
+  },
+  impactText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.danger,
+  },
+  noDataText: {
+    fontSize: 12,
+    color: COLORS.muted,
+    textAlign: 'center',
+    padding: 20,
+  }
 });

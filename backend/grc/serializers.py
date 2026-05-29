@@ -5,7 +5,9 @@ from .models import (
     KRIRecord, 
     ComplianceResult,
     AIOutput,
-    RegulationDB
+    RegulationDB,
+    Control,
+    ControlResult
 )
 
 
@@ -56,29 +58,49 @@ class AIOutputSerializer(serializers.ModelSerializer):
         model = AIOutput
         fields = (
             'id', 'assessment', 'risk_explanation', 'threat_scenarios',
-            'remediation_steps', 'generated_at', 'model_used'
+            'remediation_steps', 'compliance_proof', 'generated_at', 'model_used'
         )
         read_only_fields = ('id', 'generated_at')
+
+
+class ControlSerializer(serializers.ModelSerializer):
+    """Serializer for Controls"""
+    class Meta:
+        model = Control
+        fields = '__all__'
+
+
+class ControlResultSerializer(serializers.ModelSerializer):
+    """Serializer for Control Results"""
+    control_details = ControlSerializer(source='control', read_only=True)
+    
+    class Meta:
+        model = ControlResult
+        fields = '__all__'
 
 
 class AssessmentDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer for Assessment including all related data"""
     kri_records = KRIRecordSerializer(many=True, read_only=True)
     compliance_results = ComplianceResultSerializer(many=True, read_only=True)
+    control_results = ControlResultSerializer(many=True, read_only=True)
     ai_output = AIOutputSerializer(read_only=True)
     organization_name = serializers.CharField(source='organization.name', read_only=True)
+    organization_sector = serializers.CharField(source='organization.sector', read_only=True)
     risk_level_display = serializers.CharField(source='get_risk_level_display', read_only=True)
     
     class Meta:
         model = Assessment
         fields = (
-            'id', 'organization', 'organization_name', 'created_at', 'updated_at',
+            'id', 'organization', 'organization_name', 'organization_sector', 'created_at', 'updated_at',
             'input_mode', 'uploaded_file', 'risk_score', 'risk_level', 'risk_level_display',
-            'created_by', 'kri_records', 'compliance_results', 'ai_output'
+            'likelihood_score', 'impact_score', 'exploitability_score', 
+            'compliance_confidence', 'residual_risk_score',
+            'created_by', 'kri_records', 'compliance_results', 'control_results', 'ai_output'
         )
         read_only_fields = (
             'id', 'created_at', 'updated_at', 'risk_score', 'risk_level',
-            'kri_records', 'compliance_results', 'ai_output'
+            'kri_records', 'compliance_results', 'control_results', 'ai_output'
         )
 
 

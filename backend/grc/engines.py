@@ -18,116 +18,105 @@ class KRIEngine:
         'MFA Coverage': {
             'unit': '%',
             'polarity': 'higher_is_better',
-            'thresholds': {'Safe': 90, 'Watch': 70, 'Warning': 50, 'Critical': 0},
+            'thresholds': {'Safe': 95, 'Watch': 85, 'Warning': 70, 'Critical': 0},
         },
         'Patch Delay': {
             'unit': 'days',
             'polarity': 'lower_is_better',
-            'thresholds': {'Safe': 10, 'Watch': 20, 'Warning': 30, 'Critical': 100},
+            'thresholds': {'Safe': 7, 'Watch': 15, 'Warning': 30, 'Critical': 90},
         },
         'Encryption Coverage': {
             'unit': '%',
             'polarity': 'higher_is_better',
-            'thresholds': {'Safe': 90, 'Watch': 70, 'Warning': 50, 'Critical': 0},
+            'thresholds': {'Safe': 95, 'Watch': 85, 'Warning': 70, 'Critical': 0},
         },
         'Failed Login Rate': {
-            'unit': 'ratio',
+            'unit': '%',
             'polarity': 'lower_is_better',
-            'thresholds': {'Safe': 0.01, 'Watch': 0.05, 'Warning': 0.1, 'Critical': 1},
+            'thresholds': {'Safe': 1, 'Watch': 5, 'Warning': 10, 'Critical': 100},
         },
         'Privileged Account Count': {
             'unit': 'count',
             'polarity': 'lower_is_better',
-            'thresholds': {'Safe': 10, 'Watch': 20, 'Warning': 50, 'Critical': 1000},
+            'thresholds': {'Safe': 10, 'Watch': 25, 'Warning': 50, 'Critical': 500},
         },
         'Incident Response Time': {
             'unit': 'hours',
             'polarity': 'lower_is_better',
-            'thresholds': {'Safe': 4, 'Watch': 12, 'Warning': 24, 'Critical': 100},
+            'thresholds': {'Safe': 4, 'Watch': 8, 'Warning': 24, 'Critical': 168},
         },
-        'Vulnerability Density': {
-            'unit': 'per 100',
-            'polarity': 'lower_is_better',
-            'thresholds': {'Safe': 1, 'Watch': 5, 'Warning': 10, 'Critical': 100},
-        },
-        'Log Retention Compliance': {
+        'DDoS Protection': {
             'unit': 'yes/no',
             'polarity': 'higher_is_better',
-            'thresholds': {'Safe': 90, 'Watch': 70, 'Warning': 50, 'Critical': 0},
+            'thresholds': {'Safe': 100, 'Watch': 0, 'Warning': 0, 'Critical': 0},
+        },
+        'Vendor Risk Score': {
+            'unit': 'score',
+            'polarity': 'lower_is_better',
+            'thresholds': {'Safe': 30, 'Watch': 50, 'Warning': 70, 'Critical': 100},
         },
         'Security Awareness Training': {
             'unit': '%',
             'polarity': 'higher_is_better',
-            'thresholds': {'Safe': 85, 'Watch': 70, 'Warning': 50, 'Critical': 0},
+            'thresholds': {'Safe': 95, 'Watch': 85, 'Warning': 70, 'Critical': 0},
         },
-        'Backup Freshness': {
-            'unit': 'days',
+        'Vulnerability Density': {
+            'unit': 'count',
             'polarity': 'lower_is_better',
-            'thresholds': {'Safe': 1, 'Watch': 3, 'Warning': 7, 'Critical': 30},
+            'thresholds': {'Safe': 1, 'Watch': 10, 'Warning': 50, 'Critical': 1000},
         },
     }
 
     # Sector-specific weights
     SECTOR_WEIGHTS = {
         'Fintech': {
+            'MFA Coverage': 0.15,
+            'Encryption Coverage': 0.15,
+            'Patch Delay': 0.15,
+            'Incident Response Time': 0.10,
+            'Failed Login Rate': 0.10,
+            'Security Awareness Training': 0.10,
+            'Privileged Account Count': 0.05,
+            'DDoS Protection': 0.10,
+            'Vendor Risk Score': 0.05,
+            'Vulnerability Density': 0.05,
+        },
+        'Banking': {
             'MFA Coverage': 0.20,
             'Encryption Coverage': 0.20,
             'Patch Delay': 0.15,
             'Incident Response Time': 0.15,
-            'Failed Login Rate': 0.10,
             'Security Awareness Training': 0.10,
+            'Vendor Risk Score': 0.10,
             'Privileged Account Count': 0.05,
             'Vulnerability Density': 0.05,
-            'Log Retention Compliance': 0.00,
-            'Backup Freshness': 0.00,
-        },
-        'Banking': {
-            'MFA Coverage': 0.25,
-            'Encryption Coverage': 0.25,
-            'Patch Delay': 0.15,
-            'Incident Response Time': 0.15,
-            'Security Awareness Training': 0.10,
-            'Log Retention Compliance': 0.05,
-            'Privileged Account Count': 0.03,
-            'Backup Freshness': 0.02,
-            'Failed Login Rate': 0.00,
-            'Vulnerability Density': 0.00,
         },
         'Telecom': {
             'Patch Delay': 0.20,
-            'MFA Coverage': 0.18,
-            'Encryption Coverage': 0.18,
+            'MFA Coverage': 0.15,
+            'Encryption Coverage': 0.15,
             'Incident Response Time': 0.15,
-            'Backup Freshness': 0.10,
+            'DDoS Protection': 0.15,
             'Vulnerability Density': 0.10,
-            'Security Awareness Training': 0.07,
-            'Log Retention Compliance': 0.02,
-            'Failed Login Rate': 0.00,
-            'Privileged Account Count': 0.00,
+            'Security Awareness Training': 0.10,
         },
         'Government': {
-            'MFA Coverage': 0.22,
-            'Encryption Coverage': 0.22,
-            'Log Retention Compliance': 0.18,
+            'MFA Coverage': 0.20,
+            'Encryption Coverage': 0.20,
+            'Patch Delay': 0.15,
             'Incident Response Time': 0.15,
-            'Security Awareness Training': 0.12,
-            'Patch Delay': 0.08,
-            'Backup Freshness': 0.03,
-            'Privileged Account Count': 0.00,
-            'Failed Login Rate': 0.00,
-            'Vulnerability Density': 0.00,
+            'Security Awareness Training': 0.15,
+            'Vulnerability Density': 0.15,
         },
         'IT': {
-            'MFA Coverage': 0.18,
-            'Encryption Coverage': 0.18,
+            'MFA Coverage': 0.15,
+            'Encryption Coverage': 0.15,
             'Patch Delay': 0.15,
-            'Incident Response Time': 0.12,
-            'Vulnerability Density': 0.12,
+            'Incident Response Time': 0.15,
+            'Vulnerability Density': 0.15,
             'Security Awareness Training': 0.10,
-            'Backup Freshness': 0.05,
-            'Failed Login Rate': 0.05,
+            'Failed Login Rate': 0.10,
             'Privileged Account Count': 0.05,
-            'Log Retention Compliance': 0.00,
         },
     }
 
@@ -137,10 +126,24 @@ class KRIEngine:
 
     def process_kris(self, kri_data: Dict) -> Dict:
         """Process raw KRI data and normalize to scores"""
-        normalized_kris = {}
+        # Map frontend keys to canonical names if necessary
+        key_mapping = {
+            'mfa_percentage': 'MFA Coverage',
+            'patch_delay_days': 'Patch Delay',
+            'encryption_percentage': 'Encryption Coverage',
+            'failed_login_rate': 'Failed Login Rate',
+            'privileged_accounts': 'Privileged Account Count',
+            'incident_response_time': 'Incident Response Time',
+        }
         
+        normalized_data = {}
+        for k, v in kri_data.items():
+            mapped_key = key_mapping.get(k, k)
+            normalized_data[mapped_key] = v
+
+        normalized_kris = {}
         for kri_name, kri_def in self.KRI_DEFINITIONS.items():
-            raw_value = kri_data.get(kri_name, 0)
+            raw_value = normalized_data.get(kri_name, 0)
             
             # Normalize value
             normalized_score = self._normalize_score(raw_value, kri_def)
@@ -149,13 +152,13 @@ class KRIEngine:
             band = self._get_band(normalized_score)
             
             # Get threshold
-            threshold = kri_def['thresholds'].get(band, 0)
+            threshold_val = kri_def['thresholds'].get(band, 0)
             
             normalized_kris[kri_name] = {
                 'raw_value': raw_value,
                 'normalized_score': normalized_score,
                 'band': band,
-                'threshold': threshold,
+                'threshold': threshold_val,
                 'weight': self.weights.get(kri_name, 0),
                 'unit': kri_def['unit'],
             }
@@ -211,7 +214,11 @@ class RiskEngine:
         self.kri_engine = KRIEngine(sector)
 
     def calculate_risk(self, normalized_kris: Dict) -> Tuple[float, str]:
-        """Calculate composite risk score"""
+        """
+        Calculate composite risk score using weighted aggregation formula: 
+        R = Σ (P_i * W_i) 
+        where P_i is the normalized KRI score and W_i is the assigned sector weight.
+        """
         total_score = 0
         total_weight = 0
         
@@ -221,19 +228,18 @@ class RiskEngine:
             total_score += score * weight
             total_weight += weight
         
-        # Normalize by total weight
-        if total_weight > 0:
-            composite_score = total_score / total_weight
-        else:
-            composite_score = 0
+        # Invert score because normalized_score is "health" (higher is better)
+        # but Risk Score should represent exposure (higher is worse)
+        health_score = total_score / total_weight if total_weight > 0 else 0
+        risk_score = 100 - health_score
         
         # Clamp to 0-100
-        composite_score = max(0, min(100, composite_score))
+        risk_score = max(0, min(100, risk_score))
         
         # Determine risk level
-        risk_level = self._get_risk_level(composite_score)
+        risk_level = self._get_risk_level(risk_score)
         
-        return composite_score, risk_level
+        return risk_score, risk_level
 
     def _get_risk_level(self, score: float) -> str:
         """Determine risk level from score"""
@@ -253,56 +259,97 @@ class ComplianceEngine:
     def __init__(self, sector='Fintech'):
         self.sector = sector
 
-    def check_compliance(self, normalized_kris: Dict) -> Dict[str, List[str]]:
-        """Check compliance violations"""
-        from .models import Regulation
+    def check_compliance(self, normalized_kris: Dict, assessment_id=None) -> Dict[str, Dict]:
+        """Check compliance with AI evidence-to-control mapping"""
+        from .models import Regulation, Control, ControlResult, Assessment
         
-        violations = {}
+        results = {}
         regulations = Regulation.objects.filter(sector=self.sector)
+        ai_agent = AIGovernanceAgent()
         
         for regulation in regulations:
-            reg_violations = []
-            rules = regulation.rules or {}
+            controls = regulation.controls.all()
+            control_results = []
             
-            for rule_name, threshold in rules.items():
-                # Extract KRI name from rule (e.g., 'mfa_coverage_min' -> 'MFA Coverage')
-                kri_name = self._rule_to_kri(rule_name)
+            # Map KRIs to Controls and analyze via AI
+            for control in controls:
+                kri_name = control.mapped_kri_name or "General"
+                kri_data = normalized_kris.get(kri_name, {})
                 
-                if kri_name in normalized_kris:
-                    kri_score = normalized_kris[kri_name]['normalized_score']
-                    
-                    # Check violation
-                    if self._is_violation(rule_name, kri_score, threshold):
-                        reg_violations.append(kri_name)
+                # Perform AI mapping result
+                mapping = ai_agent.analyze_control_compliance(control, kri_data)
+                
+                if assessment_id:
+                    ControlResult.objects.create(
+                        assessment_id=assessment_id,
+                        control=control,
+                        status=mapping['status'],
+                        evidence=mapping['evidence'],
+                        ai_analysis=mapping['analysis'],
+                        risk_impact=mapping['risk_impact'],
+                        confidence_score=mapping['confidence']
+                    )
+                
+                control_results.append(mapping)
             
-            violations[regulation.name] = reg_violations
+            # Aggregate status for the Regulation
+            statuses = [r['status'] for r in control_results]
+            if not statuses:
+                status = 'Compliant'
+            elif 'Non-Compliant' in statuses:
+                status = 'Non-Compliant'
+            elif 'Partial' in statuses:
+                status = 'Partial'
+            else:
+                status = 'Compliant'
+                
+            results[regulation.name] = {
+                'status': status,
+                'control_results': control_results,
+                'summary': ai_agent.generate_regulation_summary(regulation.name, control_results)
+            }
         
-        return violations
+        return results
+
+    def _generate_logical_summary(self, reg_name, status, violations):
+        if status == 'Compliant':
+            return f"Fully compliant with {reg_name} standards."
+        elif status == 'Partial':
+            v_list = ", ".join([v['kri'] for v in violations])
+            return f"Partial compliance with {reg_name}. Critical gaps found in: {v_list}."
+        else:
+            return f"Non-compliant with {reg_name} due to systemic gaps across multiple controlled KRIs."
 
     def _rule_to_kri(self, rule_name: str) -> str:
         """Convert rule name to KRI name"""
         rule_to_kri_map = {
             'mfa_coverage_min': 'MFA Coverage',
-            'mfa_coverage_max': 'MFA Coverage',
             'patch_delay_max': 'Patch Delay',
-            'patch_delay_min': 'Patch Delay',
             'encryption_coverage_min': 'Encryption Coverage',
-            'encryption_coverage_max': 'Encryption Coverage',
-            'log_retention_days_min': 'Log Retention Compliance',
             'incident_response_max_hours': 'Incident Response Time',
-            'backup_freshness_max_days': 'Backup Freshness',
             'security_awareness_training_min': 'Security Awareness Training',
+            'failed_login_rate_max': 'Failed Login Rate',
+            'privileged_accounts_max': 'Privileged Account Count',
+            'ddos_protection_required': 'DDoS Protection',
+            'vendor_risk_max': 'Vendor Risk Score',
         }
         return rule_to_kri_map.get(rule_name, '')
 
-    def _is_violation(self, rule_name: str, kri_score: float, threshold: float) -> bool:
-        """Check if KRI violates threshold"""
-        if 'max' in rule_name or 'days_min' not in rule_name:
-            # Lower is better rules
-            return kri_score < threshold
-        else:
-            # Higher is better rules
-            return kri_score < threshold
+    def _is_violation(self, rule_name: str, actual_value: float, threshold: float) -> bool:
+        """Check if KRI violates threshold based on rule name suffix"""
+        if '_min' in rule_name:
+            return actual_value < threshold
+        if '_max' in rule_name:
+            return actual_value > threshold
+        if '_required' in rule_name:
+            return actual_value < threshold
+        return False
+
+def threshold_to_symbol(rule_name):
+    if '_min' in rule_name: return '≥'
+    if '_max' in rule_name: return '≤'
+    if '_required' in rule_name: return '≥'
+    return '='
 
 
 class AIGovernanceAgent:
@@ -312,9 +359,107 @@ class AIGovernanceAgent:
         self.api_key = settings.GEMINI_API_KEY
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-pro')
+            self.model = genai.GenerativeModel('gemini-1.5-pro') # Use upgrade version
         else:
             self.model = None
+
+    def analyze_control_compliance(self, control, kri_data):
+        """Perform AI Evidence-to-Control mapping"""
+        if not self.model:
+            return self._fallback_control_analysis(control, kri_data)
+        
+        evidence = f"KRI: {control.mapped_kri_name}, Value: {kri_data.get('raw_value', 'N/A')}{kri_data.get('unit', '')}"
+        
+        prompt = f"""
+        Act as a Lead GRC Auditor (CISA/ISO 27001 Certified). 
+        You are performing a formal evidence-to-control mapping audit.
+        
+        CONTROL FRAMEWORK: {control.regulation.name}
+        
+        CONTROL UNDER TEST:
+        ID: {control.control_id}
+        Title: {control.title}
+        Description: {control.description}
+        Mandatory Evidence Requirements: {control.required_evidence}
+        
+        AUDIT EVIDENCE PROVIDED:
+        {evidence}
+        
+        INSTRUCTIONS:
+        1. Evaluate if the evidence satisfies the control requirement.
+        2. Assign a 'status' based on the gap analysis.
+        3. Provide 'analysis' using professional auditor language.
+        4. Assess the 'risk_impact' if this control fails.
+        5. State your 'confidence' level in this mapping.
+
+        Return a JSON object:
+        {{
+            "status": "Compliant" | "Partial" | "Non-Compliant",
+            "evidence": "Verification string of the data points used",
+            "analysis": "Professional executive-level reasoning",
+            "risk_impact": "Low" | "Medium" | "High" | "Critical",
+            "confidence": 0-100
+        }}
+        Only return valid JSON. Do not include markdown blocks.
+        """
+        
+        try:
+            response = self.model.generate_content(prompt)
+            data = json.loads(response.text.replace('```json', '').replace('```', '').strip())
+            return data
+        except:
+            return self._fallback_control_analysis(control, kri_data)
+
+    def calculate_advanced_risk_metrics(self, normalized_kris, base_score):
+        """Calculate contextual risk parameters using AI"""
+        if not self.model:
+            return {'likelihood': 0.5, 'impact': 0.5, 'exploitability': 0.5}
+
+        kri_summary = "\n".join([f"{k}: {v['raw_value']} {v['unit']} ({v['band']})" for k, v in normalized_kris.items()])
+        
+        prompt = f"""
+        Analyze these Key Risk Indicators and calculate enterprise risk parameters.
+        Base Score: {base_score}
+        
+        KRIs:
+        {kri_summary}
+        
+        Return JSON object with:
+        - "likelihood_score": decimal 0-1
+        - "impact_score": decimal 0-1
+        - "exploitability_score": decimal 0-1
+        - "residual_risk_score": 0-100
+        - "compliance_confidence": 0-100
+        """
+        
+        try:
+            response = self.model.generate_content(prompt)
+            return json.loads(response.text.replace('```json', '').replace('```', '').strip())
+        except:
+            return {'likelihood_score': 0.5, 'impact_score': 0.5, 'exploitability_score': 0.5, 'residual_risk_score': base_score, 'compliance_confidence': 50}
+
+    def generate_regulation_summary(self, reg_name, results):
+        prompt = f"Summarize the compliance status for {reg_name} based on these control results: {json.dumps(results[:5])}. Keep it professional and executive-level."
+        try:
+            return self.model.generate_content(prompt).text
+        except:
+            return f"Compliance analysis completed for {reg_name}."
+
+    def _fallback_control_analysis(self, control, kri_data):
+        # Basic threshold logic as fallback
+        raw = kri_data.get('raw_value', 0)
+        status = 'Partial'
+        if raw > 90: status = 'Compliant'
+        elif raw < 40: status = 'Non-Compliant'
+        
+        return {
+            'status': status,
+            'evidence': f"KRI {control.mapped_kri_name} value is {raw}",
+            'analysis': "Analyzed via threshold fallback. AI logic unavailable.",
+            'risk_impact': 'Medium',
+            'confidence': 50
+        }
+
 
     def generate_insights(
         self,
@@ -341,14 +486,85 @@ class AIGovernanceAgent:
             # Generate remediation steps
             remediation_steps = self._generate_remediation_steps(context)
             
+            # Generate Compliance Support Summary (Proof of Evidence)
+            compliance_proof = self._generate_compliance_proof(context)
+            
             return {
                 'risk_explanation': risk_explanation,
                 'threat_scenarios': threat_scenarios,
                 'remediation_steps': remediation_steps,
+                'compliance_proof': compliance_proof,
             }
         except Exception as e:
             logger.error(f"Gemini API error: {str(e)}")
-            return self._fallback_insights(normalized_kris, risk_score, risk_level)
+            return {
+                'risk_explanation': "AI Analysis failed. Please check API configuration.",
+                'threat_scenarios': ["N/A"],
+                'remediation_steps': ["N/A"],
+                'compliance_proof': "N/A"
+            }
+
+    def _generate_compliance_proof(self, context: Dict) -> str:
+        """Generate AI proof of compliance based on raw evidence"""
+        evidence_str = ""
+        for reg_name, result in context.get('violations', {}).items():
+            evidence_str += f"\n- {reg_name}: status is {result.get('status')}. "
+            for entry in result.get('evidence', []):
+                evidence_str += f"[{entry['kri']} is {entry['actual']}, required {entry['required']} - {entry['status']}]. "
+
+        prompt = f"""
+        Format the output as a formal 'Independent Compliance Assertion'.
+        Compare the actual values against the mandatory frameworks (e.g. SBP Cybersecurity Circular No. 6 of 2017, PECA Section 21).
+        
+        Mandatory Mappings for Fintech Sector:
+        - MFA -> SBP Section 3.1.2 (Identity & Access Management)
+        - Patching -> SECP Circular 29 (Operational Resilience)
+        - Encryption -> SBP Section 3.1.4 (Data Protection)
+        - Awareness -> PECA 2016 Awareness Mandate
+        
+        Briefly explain WHY certain sections are marked as Partial or Non-Compliant using specific standard terminology.
+        """
+        
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text
+        except:
+            return "AI compliance verification in progress..."
+
+    def extract_kris_from_text(self, report_text: str) -> Dict[str, float]:
+        """Extract KRIs from unstructured text using Gemini"""
+        if not self.model:
+            return {}
+
+        prompt = f"""
+        Extract the following Key Risk Indicators (KRIs) from this security assessment report text.
+        Return the results as a JSON object where the keys match exactly these names:
+        - "MFA Coverage" (percentage, 0-100)
+        - "Patch Delay" (average days, number)
+        - "Encryption Coverage" (percentage, 0-100)
+        - "Failed Login Rate" (percentage, 0-100)
+        - "Privileged Account Count" (number)
+        - "Incident Response Time" (hours, number)
+        - "Security Awareness Training" (percentage, 0-100)
+        - "Vendor Risk Score" (0-100)
+        - "DDoS Protection" (1 if active/yes, 0 otherwise)
+
+        If a metric is not mentioned, use a reasonable default based on context or leave it out of the JSON.
+        Only return the JSON object, nothing else.
+
+        Report Text:
+        ---
+        {report_text}
+        ---
+        """
+
+        try:
+            response = self.model.generate_content(prompt)
+            cleaned_text = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(cleaned_text)
+        except Exception as e:
+            logger.error(f"Error extracting KRIs from text: {str(e)}")
+            return {}
 
     def _prepare_context(self, normalized_kris: Dict, risk_score: float, risk_level: str, violations: Dict) -> Dict:
         """Prepare context for AI"""
@@ -380,92 +596,46 @@ class AIGovernanceAgent:
             response = self.model.generate_content(prompt)
             return response.text
         except:
-            return self._fallback_risk_explanation(context)
+            return "Unable to generate AI risk explanation at this time."
 
     def _generate_threat_scenarios(self, context: Dict) -> List[str]:
-        """Generate threat scenarios using Gemini"""
-        scenarios = []
+        """Generate AI-powered threat scenarios mapped to MITRE ATT&CK"""
+        if not self.model: return ["Ransomware via MFA Gap", "Data Breach via Patch Delay"]
         
-        threat_map = {
-            'MFA Coverage': 'Credential stuffing attacks with high success rate against accounts',
-            'Patch Delay': 'Remote Code Execution via unpatched CVEs within days of disclosure',
-            'Encryption Coverage': 'Data exfiltration through unencrypted channels',
-            'Incident Response Time': 'Extended dwell time allowing lateral movement and escalation',
-            'Backup Freshness': 'Ransomware recovery inability due to stale backups',
-        }
+        prompt = f"""
+        Act as a Cyber Threat Analyst for a {context.get('sector', 'Fintech')} organization.
+        Based on the current critical gaps: {', '.join([n for n, _ in context['critical_kris']])}.
         
-        for kri_name, data in context['critical_kris']:
-            if kri_name in threat_map:
-                scenarios.append(f"{kri_name}: {threat_map[kri_name]}")
-        
-        return scenarios
+        Generate 3 technical threat scenarios including the probable MITRE ATT&CK vectors.
+        Format each line as 'Title: Step-by-Step Path'.
+        Example: 'Ransomware Exploiting MFA Gap: T1078 (Valid Accounts) -> T1486 (Data Encrypted for Impact)'.
+        """
+        try:
+            res = self.model.generate_content(prompt)
+            return [l.strip('- *') for l in res.text.strip().split('\n') if ':' in l][:3]
+        except:
+            return ["Credential Stuffing: Exploiting low MFA coverage"]
 
     def _generate_remediation_steps(self, context: Dict) -> List[str]:
-        """Generate remediation steps"""
-        steps = []
-        
-        remediation_map = {
-            'MFA Coverage': 'Implement MFA for all user accounts, starting with privileged accounts',
-            'Patch Delay': 'Establish patch management SLA (critical: 15 days, high: 30 days)',
-            'Encryption Coverage': 'Enable encryption for all data at rest and in transit',
-            'Incident Response Time': 'Develop/update incident response playbooks targeting 4-hour TTFB',
-            'Backup Freshness': 'Implement daily backup schedule with off-site replication',
-            'Security Awareness Training': 'Conduct monthly security awareness training for all staff',
-        }
-        
-        for kri_name, data in context['critical_kris']:
-            if kri_name in remediation_map:
-                steps.append(remediation_map[kri_name])
-        
-        return steps
+        """Generate auditor-grade remediation steps mapped to standards"""
+        if not self.model: return ["Enable MFA", "Shorten Patch Cycle"]
 
-    def _fallback_insights(self, normalized_kris: Dict, risk_score: float, risk_level: str) -> Dict:
-        """Fallback when Gemini is not available"""
-        return {
-            'risk_explanation': self._fallback_risk_explanation({
-                'risk_score': risk_score,
-                'risk_level': risk_level,
-                'critical_kris': [(n, d) for n, d in normalized_kris.items() if d['band'] == 'Critical']
-            }),
-            'threat_scenarios': self._fallback_threat_scenarios(normalized_kris),
-            'remediation_steps': self._fallback_remediation_steps(normalized_kris),
-        }
+        prompt = f"""
+        Act as a Senior GRC Consultant. 
+        Provide top 5 prioritized remediation actions based on the critical gaps in this assessment.
+        
+        Mandatory: For each action, add a parenthetical reference to the relevant part of the standard 
+        (e.g., SBP 3.1.2, NIST PR.AC-1, or ISO A.9.1).
+        
+        Context Sector: {context.get('sector', 'Fintech')}
+        Gaps: {', '.join([n for n, _ in context['critical_kris']])}
+        
+        Return a simple list of strings.
+        """
+        try:
+            res = self.model.generate_content(prompt)
+            return [l.strip('- *') for l in res.text.strip().split('\n') if len(l) > 10][:5]
+        except:
+            return ["Priority 1: Implement MFA organization-wide (SBP 3.1.2)"]
 
-    def _fallback_risk_explanation(self, context: Dict) -> str:
-        """Fallback risk explanation"""
-        return f"Your organization has a {context['risk_level']} risk score of {context['risk_score']:.1f}/100. " \
-               f"Focus on improving critical metrics: {', '.join([n for n, _ in context['critical_kris']])}."
 
-    def _fallback_threat_scenarios(self, normalized_kris: Dict) -> List[str]:
-        """Fallback threat scenarios"""
-        threat_map = {
-            'MFA Coverage': 'Credential stuffing attacks with high success rate',
-            'Patch Delay': 'RCE exploitation within days of CVE publication',
-            'Encryption Coverage': 'Data exfiltration via unencrypted channels',
-            'Incident Response Time': 'Extended dwell time enabling lateral movement',
-            'Backup Freshness': 'Inability to recover from ransomware',
-        }
-        
-        scenarios = []
-        for kri_name, data in normalized_kris.items():
-            if data['band'] == 'Critical' and kri_name in threat_map:
-                scenarios.append(threat_map[kri_name])
-        
-        return scenarios[:3]  # Top 3
-
-    def _fallback_remediation_steps(self, normalized_kris: Dict) -> List[str]:
-        """Fallback remediation steps"""
-        remediation_map = {
-            'MFA Coverage': 'Implement MFA for all accounts',
-            'Patch Delay': 'Establish patch SLA (critical: 15 days)',
-            'Encryption Coverage': 'Enable encryption for all data',
-            'Incident Response Time': 'Develop IR playbooks (target 4-hour TTFB)',
-            'Backup Freshness': 'Implement daily backup schedule',
-        }
-        
-        steps = []
-        for kri_name, data in normalized_kris.items():
-            if data['band'] == 'Critical' and kri_name in remediation_map:
-                steps.append(remediation_map[kri_name])
-        
-        return steps[:5]  # Top 5

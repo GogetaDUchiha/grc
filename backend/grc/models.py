@@ -51,6 +51,13 @@ class Assessment(models.Model):
         default='Low'
     )
     
+    # Advanced Risk metrics
+    likelihood_score = models.FloatField(default=0)
+    impact_score = models.FloatField(default=0)
+    exploitability_score = models.FloatField(default=0)
+    compliance_confidence = models.FloatField(default=0)
+    residual_risk_score = models.FloatField(default=0)
+    
     created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
 
     class Meta:
@@ -117,6 +124,7 @@ class AIOutput(models.Model):
     risk_explanation = models.TextField()
     threat_scenarios = models.JSONField(default=list)  # List of threat scenarios
     remediation_steps = models.JSONField(default=list)  # List of remediation steps
+    compliance_proof = models.TextField(blank=True) # Proof of comparison summary
     
     generated_at = models.DateTimeField(auto_now_add=True)
     model_used = models.CharField(max_length=100, default='gemini-pro')
@@ -139,3 +147,33 @@ class RegulationDB(models.Model):
 
     def __str__(self):
         return f"{self.regulation_name} v{self.version}"
+
+
+class Control(models.Model):
+    """Detailed controls within a regulation framework"""
+    regulation = models.ForeignKey(Regulation, related_name='controls', on_delete=models.CASCADE)
+    control_id = models.CharField(max_length=50) # e.g. SBP-AC-01
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    severity = models.CharField(max_length=20, default='High')
+    required_evidence = models.TextField(blank=True)
+    remediation_guidance = models.TextField(blank=True)
+    mapped_kri_name = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return f"{self.control_id}: {self.title}"
+
+
+class ControlResult(models.Model):
+    """Evidence-to-control mapping results"""
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='control_results')
+    control = models.ForeignKey(Control, on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=ComplianceResult.STATUS_CHOICES)
+    evidence = models.TextField()
+    ai_analysis = models.TextField()
+    risk_impact = models.CharField(max_length=20)
+    confidence_score = models.IntegerField(default=0) # 0-100
+
+    def __str__(self):
+        return f"{self.control.control_id} - {self.status}"
+

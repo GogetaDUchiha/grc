@@ -8,71 +8,10 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import api from '../services/api';
 import COLORS from '../constants/colors';
 
-const MOCK_INSIGHTS = {
-    threat_scenario:
-        'Based on the KRI analysis, the primary threat vector is lateral movement through compromised privileged accounts combined with delayed patch cycles creating exploitable windows. Attackers could leverage unpatched CVEs to establish persistence and pivot across network segments.',
-    exploitation_paths: [
-        {
-            step: 1,
-            title: 'Initial Access',
-            desc: 'Exploit unpatched vulnerability (avg 12-day delay window) in perimeter systems via known CVE.',
-        },
-        {
-            step: 2,
-            title: 'Credential Harvest',
-            desc: 'Target the 15 privileged accounts detected; weak MFA (78%) increases success probability.',
-        },
-        {
-            step: 3,
-            title: 'Lateral Movement',
-            desc: 'Move between 22% of unencrypted data segments to locate high-value assets.',
-        },
-        {
-            step: 4,
-            title: 'Exfiltration / Impact',
-            desc: '4.5-hour incident response delay allows significant dwell time before detection.',
-        },
-    ],
-    remediation_steps: [
-        {
-            priority: 'Critical',
-            title: 'Enforce MFA Across All Accounts',
-            desc: 'Immediately enforce MFA to 100% of users, prioritizing privileged accounts. Current 78% coverage leaves significant exposure.',
-            effort: 'Low',
-            impact: 'High',
-        },
-        {
-            priority: 'High',
-            title: 'Reduce Patch Delay',
-            desc: 'Implement automated patching for critical/high severity CVEs. Target < 7 days for critical patches, currently at 12 days.',
-            effort: 'Medium',
-            impact: 'High',
-        },
-        {
-            priority: 'High',
-            title: 'Privileged Access Management (PAM)',
-            desc: 'Implement Just-in-Time (JIT) access for the 15 privileged accounts. Reduce standing privilege surface.',
-            effort: 'Medium',
-            impact: 'High',
-        },
-        {
-            priority: 'Medium',
-            title: 'Improve Incident Response',
-            desc: 'Establish automated detection playbooks to reduce MTTR from 4.5 hrs to under 1 hour.',
-            effort: 'High',
-            impact: 'Medium',
-        },
-        {
-            priority: 'Medium',
-            title: 'Encrypt Remaining 9% Data',
-            desc: 'Audit and encrypt remaining unencrypted data stores. Implement encryption at rest and in transit.',
-            effort: 'Low',
-            impact: 'Medium',
-        },
-    ],
-};
+const MOCK_INSIGHTS = null;
 
 const PRIORITY_COLORS = {
     Critical: COLORS.danger,
@@ -92,19 +31,52 @@ export default function AIInsightsScreen({ route }) {
     }, []);
 
     const loadInsights = async () => {
-        if (!assessment) {
-            setInsights(MOCK_INSIGHTS);
-            return;
-        }
+        if (!assessment) return;
 
         setIsLoading(true);
         try {
-            // In a real app, fetch from API: await aiAPI.getRecommendations(assessment.id)
-            // For now, use mock data
-            await new Promise((r) => setTimeout(r, 1200)); // Simulate API delay
-            setInsights(MOCK_INSIGHTS);
+            // Assessment already contains ai_output in detail view
+            if (assessment.ai_output) {
+                setInsights({
+                    threat_scenario: assessment.ai_output.risk_explanation,
+                    compliance_proof: assessment.ai_output.compliance_proof,
+                    exploitation_paths: (assessment.ai_output.threat_scenarios || []).map((t, i) => ({
+                        step: i + 1,
+                        title: t.split(':')[0] || 'Threat',
+                        desc: t.split(':').slice(1).join(':') || t
+                    })),
+                    remediation_steps: (assessment.ai_output.remediation_steps || []).map(r => ({
+                        priority: r.includes('Critical') ? 'Critical' : r.includes('High') ? 'High' : 'Medium',
+                        title: r.split(':')[0] || 'Action',
+                        desc: r.split(':').slice(1).join(':') || r,
+                        effort: 'Medium',
+                        impact: 'High'
+                    }))
+                });
+            } else {
+                const res = await api.get(`/grc/assessments/${assessment.id}/`);
+                const fullAss = res.data;
+                if (fullAss.ai_output) {
+                    setInsights({
+                        threat_scenario: fullAss.ai_output.risk_explanation,
+                        compliance_proof: fullAss.ai_output.compliance_proof,
+                        exploitation_paths: (fullAss.ai_output.threat_scenarios || []).map((t, i) => ({
+                            step: i + 1,
+                            title: t.split(':')[0] || 'Threat',
+                            desc: t.split(':').slice(1).join(':') || t
+                        })),
+                        remediation_steps: (fullAss.ai_output.remediation_steps || []).map(r => ({
+                            priority: r.includes('Critical') ? 'Critical' : r.includes('High') ? 'High' : 'Medium',
+                            title: r.split(':')[0] || 'Action',
+                            desc: r.split(':').slice(1).join(':') || r,
+                            effort: 'Medium',
+                            impact: 'High'
+                        }))
+                    });
+                }
+            }
         } catch (error) {
-            setInsights(MOCK_INSIGHTS); // Fallback to mock
+            console.error('Error loading AI insights:', error);
         } finally {
             setIsLoading(false);
         }
@@ -134,6 +106,7 @@ export default function AIInsightsScreen({ route }) {
 
     const tabs = [
         { key: 'scenario', label: 'Threat', icon: 'warning' },
+        { key: 'compliance', label: 'Audit Proof', icon: 'verified-user' },
         { key: 'paths', label: 'Attack Path', icon: 'alt-route' },
         { key: 'remediation', label: 'Fix It', icon: 'build' },
     ];
@@ -174,6 +147,21 @@ export default function AIInsightsScreen({ route }) {
             </View>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                {/* Compliance Proof */}
+                {activeSection === 'compliance' && (
+                    <View style={styles.section}>
+                        <View style={styles.scenarioCard}>
+                            <View style={[styles.alertBanner, { borderLeftColor: COLORS.success }]}>
+                                <MaterialIcons name="fact-check" size={20} color={COLORS.primary} />
+                                <Text style={[styles.alertText, { color: COLORS.primary }]}>Proof of Evidence Statement</Text>
+                            </View>
+                            <Text style={styles.scenarioText}>
+                                {insights.compliance_proof || "Detailed compliance evidence is being analyzed for this assessment..."}
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
                 {/* Threat Scenario */}
                 {activeSection === 'scenario' && (
                     <View style={styles.section}>
@@ -190,17 +178,21 @@ export default function AIInsightsScreen({ route }) {
                             <View style={styles.statsRow}>
                                 <View style={styles.statCard}>
                                     <Text style={[styles.statValue, { color: COLORS.danger }]}>
-                                        {assessment ? (assessment.risk_score || 55.5).toFixed(0) : '55'}
+                                        {((assessment?.likelihood_score || 0) * 10).toFixed(1)}
                                     </Text>
-                                    <Text style={styles.statLabel}>Risk Score</Text>
+                                    <Text style={styles.statLabel}>Likelihood</Text>
                                 </View>
                                 <View style={styles.statCard}>
-                                    <Text style={[styles.statValue, { color: COLORS.warning }]}>3</Text>
-                                    <Text style={styles.statLabel}>Critical Issues</Text>
+                                    <Text style={[styles.statValue, { color: COLORS.warning }]}>
+                                        {((assessment?.impact_score || 0) * 10).toFixed(1)}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Impact</Text>
                                 </View>
                                 <View style={styles.statCard}>
-                                    <Text style={[styles.statValue, { color: COLORS.success }]}>5</Text>
-                                    <Text style={styles.statLabel}>Remediations</Text>
+                                    <Text style={[styles.statValue, { color: COLORS.success }]}>
+                                        {assessment?.compliance_confidence || 0}%
+                                    </Text>
+                                    <Text style={styles.statLabel}>Confidence</Text>
                                 </View>
                             </View>
                         </View>

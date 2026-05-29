@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -85,9 +85,25 @@ export default function NewAssessmentScreen({ navigation }) {
         incident_response_time: '',
     });
     const [customFields, setCustomFields] = useState([]);
+    const [organizations, setOrganizations] = useState([]);
+    const [selectedOrg, setSelectedOrg] = useState(null);
     const [uploadedFile, setUploadedFile] = useState(null);
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        fetchOrganizations();
+    }, []);
+
+    const fetchOrganizations = async () => {
+        try {
+            const res = await api.get('/accounts/organizations/');
+            setOrganizations(res.data);
+            if (res.data.length > 0) setSelectedOrg(res.data[0].id);
+        } catch (e) {
+            console.log('Error fetching organizations:', e);
+        }
+    };
 
     const addCustomField = () => setCustomFields([...customFields, { key: '', value: '' }]);
     const updateCustomField = (idx, field, val) => {
@@ -139,33 +155,16 @@ export default function NewAssessmentScreen({ navigation }) {
                 }
             });
 
-            if (token === 'demo_access_token') {
-                // Mock result
-                const mockResult = {
-                    id: Date.now(),
-                    organization_name: 'Demo Org',
-                    risk_score: 55.5,
-                    risk_level: 'Moderate',
-                    input_mode: 'manual',
-                    created_at: new Date().toISOString(),
-                    kri_data: kriData,
-                };
-                Alert.alert('Assessment Complete', 'Risk score calculated: 55.5 (Moderate)', [
-                    {
-                        text: 'View Details',
-                        onPress: () => navigation.navigate('AssessmentDetail', { assessment: mockResult }),
-                    },
-                    { text: 'Back to Dashboard', onPress: () => navigation.goBack() },
-                ]);
-                return;
-            }
-
             const response = await api.post(
                 `/grc/assessments/`,
-                { input_mode: 'manual', kri_data: kriData }
+                {
+                    input_mode: 'manual',
+                    organization: selectedOrg,
+                    kri_data: kriData
+                }
             );
 
-            Alert.alert('Assessment Complete', `Risk score: ${response.data.risk_score?.toFixed(1) || 'N/A'}`, [
+            Alert.alert('Assessment Complete', `Risk score: ${response.data.risk_score?.toFixed(1) || 'N/A'} (Level: ${response.data.risk_level})`, [
                 {
                     text: 'View Details',
                     onPress: () => navigation.navigate('AssessmentDetail', { assessment: response.data }),
@@ -183,51 +182,68 @@ export default function NewAssessmentScreen({ navigation }) {
         try {
             const result = await DocumentPicker.getDocumentAsync({
                 type: ['text/csv', 'application/json', 'application/vnd.ms-excel', '*/*'],
-                copyToCacheDirectory: true
+                copyToCacheDirectory: true,
+                multiple: true
             });
 
             if (result.canceled) return;
-            const fileObj = result.assets[0];
 
             setIsLoading(true);
+            let combinedText = '';
+            let combinedData = {};
+            let isTextReport = false;
+            let fileCount = result.assets.length;
 
-            let fileText = '';
-            if (Platform.OS === 'web' && fileObj.file) {
-                fileText = await fileObj.file.text();
-            } else {
-                const res = await fetch(fileObj.uri);
-                fileText = await res.text();
-            }
-
-            const isJson = fileObj.name.toLowerCase().endsWith('.json') || fileObj.mimeType === 'application/json';
-
-            let extractedKris = {};
-
-            if (isJson) {
-                extractedKris = JSON.parse(fileText);
-            } else {
-                // simple csv parse
-                const lines = fileText.split('\n').map(l => l.trim()).filter(Boolean);
-                if (lines.length >= 2) {
-                    const headers = lines[0].split(',');
-                    const values = lines[1].split(',');
-                    headers.forEach((h, i) => {
-                        const val = values[i] ? values[i].trim() : '';
-                        const num = parseFloat(val);
-                        extractedKris[h.trim()] = isNaN(num) ? val : num;
-                    });
+            for (const fileObj of result.assets) {
+                let fileText = '';
+                if (Platform.OS === 'web' && fileObj.file) {
+                    fileText = await fileObj.file.text();
                 } else {
-                    throw new Error("Invalid CSV format. Expected header and data row.");
+                    const res = await fetch(fileObj.uri);
+                    fileText = await res.text();
+                }
+
+                const isJson = fileObj.name.toLowerCase().endsWith('.json') || fileObj.mimeType === 'application/json';
+                const isTxt = fileObj.name.toLowerCase().endsWith('.txt') || fileObj.mimeType === 'text/plain' || fileObj.name.toLowerCase().endsWith('.pdf') || fileObj.name.toLowerCase().endsWith('.docx');
+
+                if (isJson) {
+                    try {
+                        const parsed = JSON.parse(fileText);
+                        combinedData = { ...combinedData, ...parsed };
+                    } catch (e) {
+                        combinedText += `\n[FILE: ${fileObj.name}]\n${fileText}\n`;
+                        isTextReport = true;
+                    }
+                } else if (isTxt) {
+                    combinedText += `\n[FILE: ${fileObj.name}]\n${fileText}\n`;
+                    isTextReport = true;
+                } else {
+                    // simple csv parse
+                    const lines = fileText.split('\n').map(l => l.trim()).filter(Boolean);
+                    if (lines.length >= 2) {
+                        const headers = lines[0].split(',');
+                        const values = lines[1].split(',');
+                        headers.forEach((h, i) => {
+                            const val = values[i] ? values[i].trim() : '';
+                            const num = parseFloat(val);
+                            combinedData[h.trim()] = isNaN(num) ? val : num;
+                        });
+                    } else {
+                        combinedText += `\n[FILE: ${fileObj.name}]\n${fileText}\n`;
+                        isTextReport = true;
+                    }
                 }
             }
 
             setUploadedFile({
-                name: fileObj.name,
-                data: extractedKris,
+                name: fileCount > 1 ? `${fileCount} Files Selected` : result.assets[0].name,
+                data: combinedData,
+                text: combinedText,
+                isTextReport: isTextReport || combinedText.length > 0
             });
         } catch (error) {
             console.log(error);
-            Alert.alert('Upload Error', error?.message || 'Failed to process file. Ensure it is a valid CSV or JSON.');
+            Alert.alert('Upload Error', error?.message || 'Failed to process files. Ensure they are valid formats.');
         } finally {
             setIsLoading(false);
         }
@@ -237,34 +253,21 @@ export default function NewAssessmentScreen({ navigation }) {
         if (!uploadedFile) return;
         setIsLoading(true);
         try {
-            const token = await AsyncStorage.getItem('access_token');
-            if (token === 'demo_access_token') {
-                const mockResult = {
-                    id: Date.now(),
-                    organization_name: 'Demo Org',
-                    risk_score: 45.0,
-                    risk_level: 'Low',
-                    input_mode: 'upload',
-                    created_at: new Date().toISOString(),
-                    kri_data: uploadedFile.data,
-                };
-                Alert.alert('Assessment Complete', 'Risk score calculated: 45.0 (Low)', [
-                    {
-                        text: 'View Details',
-                        onPress: () => navigation.navigate('AssessmentDetail', { assessment: mockResult }),
-                    },
-                    { text: 'Back to Dashboard', onPress: () => navigation.goBack() },
-                ]);
-                setIsLoading(false);
-                return;
+            const payload = {
+                input_mode: 'upload',
+                organization: selectedOrg
+            };
+
+            if (uploadedFile.isTextReport) {
+                payload.text_report = uploadedFile.text;
+                payload.kri_data = {}; // will be extracted by AI on backend
+            } else {
+                payload.kri_data = uploadedFile.data;
             }
 
-            const response = await api.post(
-                `/grc/assessments/`,
-                { input_mode: 'upload', kri_data: uploadedFile.data }
-            );
+            const response = await api.post(`/grc/assessments/`, payload);
 
-            Alert.alert('Assessment Complete', `Risk score: ${response.data.risk_score?.toFixed(1) || 'N/A'}`, [
+            Alert.alert('Assessment Complete', `Risk score: ${response.data.risk_score?.toFixed(1) || 'N/A'} (Level: ${response.data.risk_level})`, [
                 {
                     text: 'View Details',
                     onPress: () => navigation.navigate('AssessmentDetail', { assessment: response.data }),
@@ -272,7 +275,6 @@ export default function NewAssessmentScreen({ navigation }) {
                 { text: 'Back', onPress: () => navigation.goBack() },
             ]);
 
-            // clear after success
             setUploadedFile(null);
         } catch (error) {
             console.log(error);
@@ -287,6 +289,23 @@ export default function NewAssessmentScreen({ navigation }) {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.container}
         >
+            {/* Organization Selector */}
+            <View style={styles.orgSelector}>
+                <Text style={styles.orgHeader}>Select Organization</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.orgScroll}>
+                    {organizations.map(org => (
+                        <TouchableOpacity
+                            key={org.id}
+                            style={[styles.orgChip, selectedOrg === org.id && styles.orgChipActive]}
+                            onPress={() => setSelectedOrg(org.id)}
+                        >
+                            <MaterialIcons name="business" size={16} color={selectedOrg === org.id ? '#fff' : COLORS.muted} />
+                            <Text style={[styles.orgChipText, selectedOrg === org.id && styles.orgChipTextActive]}>{org.name}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+
             {/* Tabs */}
             <View style={styles.tabRow}>
                 <TouchableOpacity
@@ -429,7 +448,9 @@ export default function NewAssessmentScreen({ navigation }) {
                             </View>
                             <View style={styles.previewDataBox}>
                                 <Text style={styles.previewDataText}>
-                                    {JSON.stringify(uploadedFile.data, null, 2)}
+                                    {uploadedFile.isTextReport
+                                        ? `[SECURITY REPORT DETECTED]\nExtracting insights from unstructured text...\n\n${uploadedFile.text.substring(0, 300)}...`
+                                        : JSON.stringify(uploadedFile.data, null, 2)}
                                 </Text>
                             </View>
                             <TouchableOpacity
@@ -735,5 +756,45 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontFamily: 'monospace',
         color: COLORS.dark,
+    },
+    orgSelector: {
+        backgroundColor: '#fff',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.light,
+    },
+    orgHeader: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.muted,
+        textTransform: 'uppercase',
+        marginBottom: 10,
+        letterSpacing: 0.5,
+    },
+    orgScroll: {
+        gap: 8,
+    },
+    orgChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#f1f5f9',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    orgChipActive: {
+        backgroundColor: COLORS.primary,
+        borderColor: COLORS.primary,
+    },
+    orgChipText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: COLORS.muted,
+    },
+    orgChipTextActive: {
+        color: '#fff',
     },
 });

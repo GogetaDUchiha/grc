@@ -17,25 +17,8 @@ import { AuthContext } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
-const MOCK_ASSESSMENTS = [
-  {
-    id: 1,
-    organization_name: 'Demo Org',
-    risk_score: 62.5,
-    risk_level: 'Moderate',
-    input_mode: 'manual',
-    created_at: new Date().toISOString(),
-  },
-];
-
-const MOCK_KRI = [
-  { label: 'MFA Coverage', value: 78, status: 'warning' },
-  { label: 'Patch Delay', value: 12, unit: 'days', status: 'danger' },
-  { label: 'Encryption %', value: 91, status: 'success' },
-  { label: 'Failed Logins', value: 3.2, unit: '%', status: 'success' },
-  { label: 'Privileged Accts', value: 15, status: 'warning' },
-  { label: 'Incident Response', value: 4.5, unit: 'hrs', status: 'warning' },
-];
+const MOCK_ASSESSMENTS = [];
+const MOCK_KRI = [];
 
 function getRiskColor(level) {
   switch (level) {
@@ -158,10 +141,20 @@ export default function DashboardScreen({ navigation }) {
             <View style={[styles.riskBadge, { backgroundColor: getRiskColor(riskLevel) }]}>
               <Text style={styles.riskBadgeText}>{riskLevel}</Text>
             </View>
+            <View style={styles.metricsRow}>
+              <View style={styles.miniMetric}>
+                <Text style={styles.miniLabel}>Likelihood</Text>
+                <Text style={styles.miniValue}>{((latestAssessment?.likelihood_score || 0) * 10).toFixed(1)}</Text>
+              </View>
+              <View style={styles.miniMetric}>
+                <Text style={styles.miniLabel}>Impact</Text>
+                <Text style={styles.miniValue}>{((latestAssessment?.impact_score || 0) * 10).toFixed(1)}</Text>
+              </View>
+            </View>
             <View style={styles.scoreGauge}>
               <View style={[styles.scoreBar, { width: `${Math.min(riskScore, 100)}%`, backgroundColor: scoreColor }]} />
             </View>
-            <Text style={styles.scoreBarLabel}>{riskScore.toFixed(0)}% risk exposure</Text>
+            <Text style={styles.scoreBarLabel}>{riskScore.toFixed(0)}% overall exposure</Text>
           </View>
         </View>
 
@@ -210,40 +203,39 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Compliance Matrix Preview */}
+        {/* Risk Heatmap (v2) */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <MaterialIcons name="verified-user" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Compliance Matrix</Text>
+            <MaterialIcons name="grid-view" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Cyber Risk Heatmap</Text>
           </View>
-          <View style={styles.complianceGrid}>
-            {latestDetail && latestDetail.compliance_results ? latestDetail.compliance_results.map((item) => {
-              const isComp = item.status === 'PASS';
-              const color = isComp ? COLORS.success : COLORS.danger;
-              return (
-                <View key={item.regulation_name} style={styles.complianceItem}>
-                  <View style={[styles.complianceDot, { backgroundColor: color }]} />
-                  <View style={styles.complianceInfo}>
-                    <Text style={styles.complianceReg} numberOfLines={1}>{item.regulation_name}</Text>
-                    <Text style={[styles.complianceStatus, { color: color }]}>{item.status_display}</Text>
-                  </View>
+          <View style={styles.heatmap}>
+            <View style={styles.heatmapY}><Text style={styles.heatmapLabel}>Impact</Text></View>
+            <View style={styles.heatmapGrid}>
+              {[1, 2, 3].map(row => (
+                <View key={row} style={styles.heatmapRow}>
+                  {[1, 2, 3].map(col => {
+                    const isActive = latestAssessment && (
+                      ((row === 1 && latestAssessment.impact_score > 0.6) ||
+                        (row === 2 && latestAssessment.impact_score <= 0.6 && latestAssessment.impact_score > 0.3) ||
+                        (row === 3 && latestAssessment.impact_score <= 0.3)) &&
+                      ((col === 1 && latestAssessment.likelihood_score <= 0.3) ||
+                        (col === 2 && latestAssessment.likelihood_score <= 0.6 && latestAssessment.likelihood_score > 0.3) ||
+                        (col === 3 && latestAssessment.likelihood_score > 0.6))
+                    );
+
+                    const color = (row === 1) ? COLORS.danger : (row === 2) ? COLORS.warning : COLORS.success;
+                    return (
+                      <View key={col} style={[styles.heatmapCell, { backgroundColor: color, opacity: isActive ? 1 : 0.2 }]}>
+                        {isActive && col === 2 && <MaterialIcons name="location-on" size={20} color="#fff" />}
+                      </View>
+                    )
+                  })}
                 </View>
-              )
-            }) : [
-              { regulation: 'PCI DSS', status: 'Partial', color: COLORS.warning },
-              { regulation: 'ISO 27001', status: 'Compliant', color: COLORS.success },
-              { regulation: 'NIST CSF', status: 'Review', color: '#ff8c00' },
-              { regulation: 'GDPR', status: 'Compliant', color: COLORS.success },
-            ].map((item) => (
-              <View key={item.regulation} style={styles.complianceItem}>
-                <View style={[styles.complianceDot, { backgroundColor: item.color }]} />
-                <View style={styles.complianceInfo}>
-                  <Text style={styles.complianceReg}>{item.regulation}</Text>
-                  <Text style={[styles.complianceStatus, { color: item.color }]}>{item.status}</Text>
-                </View>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
+          <View style={styles.heatmapX}><Text style={styles.heatmapLabel}>Likelihood</Text></View>
         </View>
 
         {/* Top Risks */}
@@ -320,7 +312,7 @@ export default function DashboardScreen({ navigation }) {
           </View>
           {assessments.length === 0 ? (
             <View style={styles.emptyState}>
-              <MaterialIcons name="assignment-outlined" size={36} color={COLORS.muted} />
+              <MaterialIcons name="assignment" size={36} color={COLORS.muted} />
               <Text style={styles.emptyStateText}>No assessments yet</Text>
               <TouchableOpacity
                 style={styles.emptyStateBtn}
@@ -693,5 +685,60 @@ const styles = StyleSheet.create({
   assessmentScoreText: {
     fontSize: 18,
     fontWeight: '800',
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  miniMetric: {
+    alignItems: 'center',
+  },
+  miniLabel: {
+    fontSize: 9,
+    color: COLORS.muted,
+    textTransform: 'uppercase',
+  },
+  miniValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.dark,
+  },
+  heatmap: {
+    flexDirection: 'row',
+    height: 150,
+    alignItems: 'center',
+  },
+  heatmapGrid: {
+    flex: 1,
+    gap: 4,
+  },
+  heatmapRow: {
+    flexDirection: 'row',
+    flex: 1,
+    gap: 4,
+  },
+  heatmapCell: {
+    flex: 1,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heatmapY: {
+    width: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heatmapX: {
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  heatmapLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.muted,
+    transform: [{ rotate: '-90deg' }],
   },
 });
