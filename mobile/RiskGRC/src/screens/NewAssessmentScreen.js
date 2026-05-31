@@ -14,7 +14,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
-import api from '../services/api';
+import api, { ASSESSMENT_TIMEOUT } from '../services/api';
 import COLORS from '../constants/colors';
 
 const KRI_FIELDS = [
@@ -74,16 +74,40 @@ const KRI_FIELDS = [
     },
 ];
 
+const KRI_NAME_TO_KEY = {
+    'MFA Coverage': 'mfa_percentage',
+    'Patch Delay': 'patch_delay_days',
+    'Encryption Coverage': 'encryption_percentage',
+    'Failed Login Rate': 'failed_login_rate',
+    'Privileged Account Count': 'privileged_accounts',
+    'Incident Response Time': 'incident_response_time',
+};
+
+const KRI_STORAGE_KEY = 'riskgrc_saved_kri';
+
+const EMPTY_KRIS = {
+    mfa_percentage: '',
+    patch_delay_days: '',
+    encryption_percentage: '',
+    failed_login_rate: '',
+    privileged_accounts: '',
+    incident_response_time: '',
+};
+
+const applyExtractedKris = (records) => {
+    const next = { ...EMPTY_KRIS };
+    (records || []).forEach((rec) => {
+        const key = KRI_NAME_TO_KEY[rec.kri_name];
+        if (key && rec.raw_value != null) {
+            next[key] = String(rec.raw_value);
+        }
+    });
+    return next;
+};
+
 export default function NewAssessmentScreen({ navigation }) {
     const [activeTab, setActiveTab] = useState('manual'); // 'manual' | 'upload'
-    const [kris, setKris] = useState({
-        mfa_percentage: '',
-        patch_delay_days: '',
-        encryption_percentage: '',
-        failed_login_rate: '',
-        privileged_accounts: '',
-        incident_response_time: '',
-    });
+    const [kris, setKris] = useState({ ...EMPTY_KRIS });
     const [customFields, setCustomFields] = useState([]);
     const [organizations, setOrganizations] = useState([]);
     const [selectedOrg, setSelectedOrg] = useState(null);
@@ -93,7 +117,27 @@ export default function NewAssessmentScreen({ navigation }) {
 
     useEffect(() => {
         fetchOrganizations();
+        loadSavedKris();
     }, []);
+
+    const loadSavedKris = async () => {
+        try {
+            const saved = await AsyncStorage.getItem(KRI_STORAGE_KEY);
+            if (saved) {
+                setKris({ ...EMPTY_KRIS, ...JSON.parse(saved) });
+            }
+        } catch (e) {
+            console.log('Could not load saved KRIs:', e);
+        }
+    };
+
+    const persistKris = async (nextKris) => {
+        try {
+            await AsyncStorage.setItem(KRI_STORAGE_KEY, JSON.stringify(nextKris));
+        } catch (e) {
+            console.log('Could not save KRIs:', e);
+        }
+    };
 
     const fetchOrganizations = async () => {
         try {
@@ -116,66 +160,114 @@ export default function NewAssessmentScreen({ navigation }) {
     };
 
     const updateKri = (key, value) => {
-        setKris((prev) => ({ ...prev, [key]: value }));
+        setKris((prev) => {
+            const next = { ...prev, [key]: value };
+            persistKris(next);
+            return next;
+        });
         if (errors[key]) setErrors((prev) => ({ ...prev, [key]: '' }));
     };
 
-    const validate = () => {
+    const validateOptionalKri = () => {
         const newErrors = {};
         KRI_FIELDS.forEach(({ key, label, min, max }) => {
-            if (kris[key] !== '' && kris[key] !== undefined) {
-                const val = parseFloat(kris[key]);
-                if (isNaN(val)) {
-                    newErrors[key] = `${label} must be a number`;
-                } else if (val < min || val > max) {
-                    newErrors[key] = `Must be between ${min} and ${max}`;
-                }
+            if (kris[key] === '' || kris[key] === undefined) return;
+            const val = parseFloat(kris[key]);
+            if (isNaN(val)) {
+                newErrors[key] = `${label} must be a number`;
+            } else if (val < min || val > max) {
+                newErrors[key] = `Must be between ${min} and ${max}`;
             }
         });
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = async () => {
-        if (!validate()) return;
+    const buildLogContent = (file) => {
+        const parts = [];
+        if (file.text?.trim()) parts.push(file.text.trim());
+        if (file.data && Object.keys(file.data).length > 0) {
+            parts.push(JSON.stringify(file.data, null, 2));
+        }
+        return parts.join('\n\n');
+    };
 
+    const buildKriData = () => {
+        const kriData = {};
+        KRI_FIELDS.forEach(({ key }) => {
+            if (kris[key] !== '' && kris[key] !== undefined) {
+                kriData[key] = parseFloat(kris[key]);
+            }
+        });
+        customFields.forEach((field) => {
+            if (field.key.trim() && field.value.trim()) {
+                const parsed = parseFloat(field.value);
+                kriData[field.key.trim()] = isNaN(parsed) ? field.value : parsed;
+            }
+        });
+        return kriData;
+    };
+
+    const goToResults = (assessment) => {
+        navigation.replace('AssessmentDetail', { assessment });
+    };
+
+    const submitAssessment = async (logContent) => {
+        if (!logContent || logContent.trim().length < 20) {
+            Alert.alert('Input Required', 'Upload log files before running analysis.');
+            return;
+        }
+
+        if (!validateOptionalKri()) return;
+
+        if (!selectedOrg) {
+            Alert.alert('Organization Required', 'Select an organization before running analysis.');
+            return;
+        }
+
+        const kriData = buildKriData();
         setIsLoading(true);
         try {
-            const token = await AsyncStorage.getItem('access_token');
-            const kriData = {};
-            KRI_FIELDS.forEach(({ key }) => {
-                if (kris[key] !== '' && kris[key] !== undefined) {
-                    kriData[key] = parseFloat(kris[key]);
-                }
-            });
-            customFields.forEach(field => {
-                if (field.key.trim() && field.value.trim()) {
-                    const parsed = parseFloat(field.value);
-                    kriData[field.key.trim()] = isNaN(parsed) ? field.value : parsed;
-                }
+            const payload = {
+                input_mode: 'upload',
+                organization: selectedOrg,
+                text_report: logContent,
+            };
+            if (Object.keys(kriData).length > 0) {
+                payload.kri_data = kriData;
+            }
+
+            const response = await api.post(`/grc/assessments/`, payload, {
+                timeout: ASSESSMENT_TIMEOUT,
             });
 
-            const response = await api.post(
-                `/grc/assessments/`,
-                {
-                    input_mode: 'manual',
-                    organization: selectedOrg,
-                    kri_data: kriData
-                }
-            );
+            const assessment = response.data?.ai_output
+                ? response.data
+                : (await api.get(`/grc/assessments/${response.data.id}/`, {
+                    timeout: ASSESSMENT_TIMEOUT,
+                })).data;
 
-            Alert.alert('Assessment Complete', `Risk score: ${response.data.risk_score?.toFixed(1) || 'N/A'} (Level: ${response.data.risk_level})`, [
-                {
-                    text: 'View Details',
-                    onPress: () => navigation.navigate('AssessmentDetail', { assessment: response.data }),
-                },
-                { text: 'Back', onPress: () => navigation.goBack() },
-            ]);
+            if (!assessment.ai_output) {
+                Alert.alert('Error', 'Assessment could not complete. Please try again.');
+                return;
+            }
+
+            const extractedKris = applyExtractedKris(assessment.kri_records);
+            setKris(extractedKris);
+            await persistKris(extractedKris);
+
+            setUploadedFile(null);
+            goToResults(assessment);
         } catch (error) {
             Alert.alert('Error', error?.response?.data?.detail || 'Assessment failed. Please try again.');
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSubmit = async () => {
+        Alert.alert('Input Required', 'Upload log files before running analysis.');
+        setActiveTab('upload');
     };
 
     const handleFileUpload = async () => {
@@ -218,20 +310,8 @@ export default function NewAssessmentScreen({ navigation }) {
                     combinedText += `\n[FILE: ${fileObj.name}]\n${fileText}\n`;
                     isTextReport = true;
                 } else {
-                    // simple csv parse
-                    const lines = fileText.split('\n').map(l => l.trim()).filter(Boolean);
-                    if (lines.length >= 2) {
-                        const headers = lines[0].split(',');
-                        const values = lines[1].split(',');
-                        headers.forEach((h, i) => {
-                            const val = values[i] ? values[i].trim() : '';
-                            const num = parseFloat(val);
-                            combinedData[h.trim()] = isNaN(num) ? val : num;
-                        });
-                    } else {
-                        combinedText += `\n[FILE: ${fileObj.name}]\n${fileText}\n`;
-                        isTextReport = true;
-                    }
+                    combinedText += `\n[FILE: ${fileObj.name}]\n${fileText}\n`;
+                    isTextReport = true;
                 }
             }
 
@@ -250,38 +330,11 @@ export default function NewAssessmentScreen({ navigation }) {
     };
 
     const submitUploadedFile = async () => {
-        if (!uploadedFile) return;
-        setIsLoading(true);
-        try {
-            const payload = {
-                input_mode: 'upload',
-                organization: selectedOrg
-            };
-
-            if (uploadedFile.isTextReport) {
-                payload.text_report = uploadedFile.text;
-                payload.kri_data = {}; // will be extracted by AI on backend
-            } else {
-                payload.kri_data = uploadedFile.data;
-            }
-
-            const response = await api.post(`/grc/assessments/`, payload);
-
-            Alert.alert('Assessment Complete', `Risk score: ${response.data.risk_score?.toFixed(1) || 'N/A'} (Level: ${response.data.risk_level})`, [
-                {
-                    text: 'View Details',
-                    onPress: () => navigation.navigate('AssessmentDetail', { assessment: response.data }),
-                },
-                { text: 'Back', onPress: () => navigation.goBack() },
-            ]);
-
-            setUploadedFile(null);
-        } catch (error) {
-            console.log(error);
-            Alert.alert('Upload Error', error?.response?.data?.detail || 'Assessment failed. Please try again.');
-        } finally {
-            setIsLoading(false);
+        if (!uploadedFile) {
+            Alert.alert('Input Required', 'Choose a log file before running analysis.');
+            return;
         }
+        await submitAssessment(buildLogContent(uploadedFile));
     };
 
     return (

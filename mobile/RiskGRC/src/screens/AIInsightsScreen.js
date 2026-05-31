@@ -28,24 +28,26 @@ export default function AIInsightsScreen({ route }) {
 
     useEffect(() => {
         loadInsights();
-    }, []);
+    }, [assessment?.id]);
 
     const loadInsights = async () => {
-        if (!assessment) return;
+        if (!assessment?.id) return;
 
         setIsLoading(true);
         try {
-            // Assessment already contains ai_output in detail view
-            if (assessment.ai_output) {
+            const res = await api.get(`/grc/assessments/${assessment.id}/`);
+            const fullAss = res.data;
+
+            if (fullAss.ai_output) {
                 setInsights({
-                    threat_scenario: assessment.ai_output.risk_explanation,
-                    compliance_proof: assessment.ai_output.compliance_proof,
-                    exploitation_paths: (assessment.ai_output.threat_scenarios || []).map((t, i) => ({
+                    threat_scenario: fullAss.ai_output.risk_explanation,
+                    compliance_proof: fullAss.ai_output.compliance_proof,
+                    exploitation_paths: (fullAss.ai_output.threat_scenarios || []).map((t, i) => ({
                         step: i + 1,
                         title: t.split(':')[0] || 'Threat',
                         desc: t.split(':').slice(1).join(':') || t
                     })),
-                    remediation_steps: (assessment.ai_output.remediation_steps || []).map(r => ({
+                    remediation_steps: (fullAss.ai_output.remediation_steps || []).map(r => ({
                         priority: r.includes('Critical') ? 'Critical' : r.includes('High') ? 'High' : 'Medium',
                         title: r.split(':')[0] || 'Action',
                         desc: r.split(':').slice(1).join(':') || r,
@@ -53,27 +55,6 @@ export default function AIInsightsScreen({ route }) {
                         impact: 'High'
                     }))
                 });
-            } else {
-                const res = await api.get(`/grc/assessments/${assessment.id}/`);
-                const fullAss = res.data;
-                if (fullAss.ai_output) {
-                    setInsights({
-                        threat_scenario: fullAss.ai_output.risk_explanation,
-                        compliance_proof: fullAss.ai_output.compliance_proof,
-                        exploitation_paths: (fullAss.ai_output.threat_scenarios || []).map((t, i) => ({
-                            step: i + 1,
-                            title: t.split(':')[0] || 'Threat',
-                            desc: t.split(':').slice(1).join(':') || t
-                        })),
-                        remediation_steps: (fullAss.ai_output.remediation_steps || []).map(r => ({
-                            priority: r.includes('Critical') ? 'Critical' : r.includes('High') ? 'High' : 'Medium',
-                            title: r.split(':')[0] || 'Action',
-                            desc: r.split(':').slice(1).join(':') || r,
-                            effort: 'Medium',
-                            impact: 'High'
-                        }))
-                    });
-                }
             }
         } catch (error) {
             console.error('Error loading AI insights:', error);

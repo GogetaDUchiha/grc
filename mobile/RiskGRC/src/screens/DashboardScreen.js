@@ -169,7 +169,8 @@ export default function DashboardScreen({ navigation }) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.secondaryAction}
-            onPress={() => navigation.navigate('AIInsights', { assessment: latestAssessment })}
+            onPress={() => navigation.navigate('AIInsights', { assessment: latestDetail || latestAssessment })}
+            disabled={!latestAssessment}
           >
             <MaterialIcons name="psychology" size={20} color={COLORS.primary} />
             <Text style={styles.secondaryActionText}>AI Insights</Text>
@@ -292,13 +293,16 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.sectionTitle}>AI Summary</Text>
           </View>
           <Text style={styles.aiSummaryText}>
-            {latestAssessment
-              ? `Your organization shows a ${riskLevel.toLowerCase()} risk posture with a score of ${riskScore.toFixed(1)}/100. Primary concerns include authentication gaps and delayed patching cycles. Recommend immediate MFA enforcement and patch management review.`
+            {latestDetail?.ai_output?.risk_explanation
+              ? latestDetail.ai_output.risk_explanation
+              : latestAssessment
+              ? `Your organization shows a ${riskLevel.toLowerCase()} risk posture with a score of ${riskScore.toFixed(1)}/100. Open AI Insights for the full analysis.`
               : 'No assessment data available. Run your first assessment to receive AI-powered risk analysis and actionable recommendations tailored to your sector.'}
           </Text>
           <TouchableOpacity
             style={styles.aiButton}
-            onPress={() => navigation.navigate('AIInsights', { assessment: latestAssessment })}
+            onPress={() => navigation.navigate('AIInsights', { assessment: latestDetail || latestAssessment })}
+            disabled={!latestAssessment}
           >
             <Text style={styles.aiButtonText}>View Full AI Report →</Text>
           </TouchableOpacity>

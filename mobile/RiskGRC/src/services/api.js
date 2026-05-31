@@ -11,7 +11,8 @@ try {
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-const TIMEOUT = 15000; // 15 seconds
+const TIMEOUT = 15000; // 15 seconds default
+const ASSESSMENT_TIMEOUT = 120000; // 2 minutes for log analysis
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
@@ -107,7 +108,16 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Retry logic for network errors
+    // Retry logic for network errors (GET only — never retry POST to avoid duplicates)
+    if (
+      config.method?.toLowerCase() !== 'get' &&
+      (error.code === 'ECONNABORTED' ||
+      error.code === 'ERR_NETWORK' ||
+      error.message.includes('timeout'))
+    ) {
+      return Promise.reject(error);
+    }
+
     if (
       error.code === 'ECONNABORTED' ||
       error.code === 'ERR_NETWORK' ||
@@ -176,3 +186,4 @@ export const aiAPI = {
 };
 
 export default api;
+export { ASSESSMENT_TIMEOUT };

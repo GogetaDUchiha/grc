@@ -9,12 +9,14 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Platform,
+  Linking,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 
-const ReportsScreen = () => {
+const ReportsScreen = ({ navigation }) => {
   const [assessments, setAssessments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -26,13 +28,12 @@ const ReportsScreen = () => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const response = await api.get(`/grc/assessments/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-
-      // Sort by created_at descending
-      const sorted = response.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const response = await api.get(`/grc/assessments/`);
+      let list = response.data || [];
+      if (!Array.isArray(list)) {
+        list = list.results || [];
+      }
+      const sorted = list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setAssessments(sorted);
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -43,10 +44,23 @@ const ReportsScreen = () => {
   };
 
   const handleExportPDF = async (assessmentId) => {
-    Alert.alert(
-      'Export PDF',
-      'PDF export feature coming soon.\nYou can download the report from the web portal.'
-    );
+    const url = `${api.defaults.baseURL}/grc/assessments/${assessmentId}/export_pdf/`;
+    try {
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        await Linking.openURL(url);
+      }
+    } catch (error) {
+      Alert.alert('Export Error', 'Could not download the report.');
+    }
+  };
+
+    const handleViewReport = (item) => {
+    navigation.navigate('Assess', {
+      screen: 'AssessmentDetail',
+      params: { assessment: item, id: item.id },
+    });
   };
 
   const getRiskColor = (riskLevel) => {
@@ -105,7 +119,7 @@ const ReportsScreen = () => {
           <MaterialIcons name="download" size={18} color="#fff" />
           <Text style={styles.actionBtnText}>Export</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionBtn, styles.viewBtn]}>
+        <TouchableOpacity style={[styles.actionBtn, styles.viewBtn]} onPress={() => handleViewReport(item)}>
           <MaterialIcons name="visibility" size={18} color={COLORS.primary} />
           <Text style={[styles.actionBtnText, { color: COLORS.primary }]}>View</Text>
         </TouchableOpacity>

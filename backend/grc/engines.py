@@ -10,6 +10,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class GeminiInsightsError(Exception):
+    """Raised when Gemini cannot produce assessment insights."""
+
+
 class KRIEngine:
     """KRI Engine: Normalizes raw KRI values to standardized scores"""
     
@@ -354,112 +358,318 @@ def threshold_to_symbol(rule_name):
 
 class AIGovernanceAgent:
     """AI Governance Agent: Generates AI insights using Gemini"""
-    
+
+    MODELS = ('gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash')
+
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY
+        self.model = None
+        self._model_names = []
+        self._last_model_used = None
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-pro') # Use upgrade version
-        else:
-            self.model = None
+            self._model_names = list(self.MODELS)
+            self.model = genai.GenerativeModel(self._model_names[0])
+
+    def _extract_text(self, response) -> str:
+        try:
+            text = response.text
+            if text and text.strip():
+                return text.strip()
+        except Exception:
+            pass
+        if response.candidates:
+            parts = response.candidates[0].content.parts
+            if parts:
+                return parts[0].text.strip()
+        raise ValueError("Gemini returned an empty response")
+
+    def _call_gemini(self, prompt: str) -> str:
+        last_error = None
+        for model_name in self._model_names:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+                self._last_model_used = model_name
+                return self._extract_text(response)
+            except Exception as exc:
+                last_error = exc
+                logger.warning("Gemini call failed for %s: %s", model_name, exc)
+        raise GeminiInsightsError(
+            "Gemini could not generate insights. Check GEMINI_API_KEY and API quota, then retry."
+        ) from last_error
+
+    def _parse_json(self, text: str) -> Dict:
+        cleaned = text.replace('```json', '').replace('```', '').strip()
+        start = cleaned.find('{')
+        end = cleaned.rfind('}')
+        if start != -1 and end != -1:
+            cleaned = cleaned[start:end + 1]
+        return json.loads(cleaned)
+
+    def _kri_summary(self, normalized_kris: Dict) -> str:
+        lines = []
+        for name, data in normalized_kris.items():
+            lines.append(
+                f"- {name}: {data.get('raw_value')}{data.get('unit', '')} "
+                f"(band={data.get('band')}, score={data.get('normalized_score', 0):.0f})"
+            )
+        return '\n'.join(lines) if lines else "No KRI data supplied."
+
+    def _compliance_summary(self, compliance_violations: Dict) -> str:
+        lines = []
+        for reg_name, result in (compliance_violations or {}).items():
+            lines.append(f"- {reg_name}: {result.get('status', 'Unknown')}")
+            for control in result.get('control_results', []):
+                lines.append(
+                    f"    • {control.get('status', 'N/A')}: {control.get('evidence', '')}"
+                )
+        return '\n'.join(lines) if lines else "No compliance mapping available."
 
     def analyze_control_compliance(self, control, kri_data):
-        """Perform AI Evidence-to-Control mapping"""
-        if not self.model:
-            return self._fallback_control_analysis(control, kri_data)
-        
-        evidence = f"KRI: {control.mapped_kri_name}, Value: {kri_data.get('raw_value', 'N/A')}{kri_data.get('unit', '')}"
-        
-        prompt = f"""
-        Act as a Lead GRC Auditor (CISA/ISO 27001 Certified). 
-        You are performing a formal evidence-to-control mapping audit.
-        
-        CONTROL FRAMEWORK: {control.regulation.name}
-        
-        CONTROL UNDER TEST:
-        ID: {control.control_id}
-        Title: {control.title}
-        Description: {control.description}
-        Mandatory Evidence Requirements: {control.required_evidence}
-        
-        AUDIT EVIDENCE PROVIDED:
-        {evidence}
-        
-        INSTRUCTIONS:
-        1. Evaluate if the evidence satisfies the control requirement.
-        2. Assign a 'status' based on the gap analysis.
-        3. Provide 'analysis' using professional auditor language.
-        4. Assess the 'risk_impact' if this control fails.
-        5. State your 'confidence' level in this mapping.
-
-        Return a JSON object:
-        {{
-            "status": "Compliant" | "Partial" | "Non-Compliant",
-            "evidence": "Verification string of the data points used",
-            "analysis": "Professional executive-level reasoning",
-            "risk_impact": "Low" | "Medium" | "High" | "Critical",
-            "confidence": 0-100
-        }}
-        Only return valid JSON. Do not include markdown blocks.
-        """
-        
-        try:
-            response = self.model.generate_content(prompt)
-            data = json.loads(response.text.replace('```json', '').replace('```', '').strip())
-            return data
-        except:
-            return self._fallback_control_analysis(control, kri_data)
+        """Perform evidence-to-control mapping (rule-based to preserve API quota for insights)"""
+        return self._fallback_control_analysis(control, kri_data)
 
     def calculate_advanced_risk_metrics(self, normalized_kris, base_score):
-        """Calculate contextual risk parameters using AI"""
-        if not self.model:
-            return {'likelihood': 0.5, 'impact': 0.5, 'exploitability': 0.5}
+        """Derive risk metrics from KRI bands without extra API calls"""
+        critical = sum(1 for d in normalized_kris.values() if d.get('band') == 'Critical')
+        warning = sum(
+            1 for d in normalized_kris.values() if d.get('band') in ('Warning', 'Watch')
+        )
+        safe = sum(1 for d in normalized_kris.values() if d.get('band') == 'Safe')
+        total = len(normalized_kris) or 1
 
-        kri_summary = "\n".join([f"{k}: {v['raw_value']} {v['unit']} ({v['band']})" for k, v in normalized_kris.items()])
-        
-        prompt = f"""
-        Analyze these Key Risk Indicators and calculate enterprise risk parameters.
-        Base Score: {base_score}
-        
-        KRIs:
-        {kri_summary}
-        
-        Return JSON object with:
-        - "likelihood_score": decimal 0-1
-        - "impact_score": decimal 0-1
-        - "exploitability_score": decimal 0-1
-        - "residual_risk_score": 0-100
-        - "compliance_confidence": 0-100
-        """
-        
-        try:
-            response = self.model.generate_content(prompt)
-            return json.loads(response.text.replace('```json', '').replace('```', '').strip())
-        except:
-            return {'likelihood_score': 0.5, 'impact_score': 0.5, 'exploitability_score': 0.5, 'residual_risk_score': base_score, 'compliance_confidence': 50}
+        likelihood = min(1.0, 0.15 + (critical * 0.2 + warning * 0.1) / total)
+        impact = min(1.0, base_score / 100)
+        exploitability = min(1.0, 0.2 + critical * 0.12)
+        confidence = max(35, min(95, int((safe / total) * 100)))
 
-    def generate_regulation_summary(self, reg_name, results):
-        prompt = f"Summarize the compliance status for {reg_name} based on these control results: {json.dumps(results[:5])}. Keep it professional and executive-level."
-        try:
-            return self.model.generate_content(prompt).text
-        except:
-            return f"Compliance analysis completed for {reg_name}."
-
-    def _fallback_control_analysis(self, control, kri_data):
-        # Basic threshold logic as fallback
-        raw = kri_data.get('raw_value', 0)
-        status = 'Partial'
-        if raw > 90: status = 'Compliant'
-        elif raw < 40: status = 'Non-Compliant'
-        
         return {
-            'status': status,
-            'evidence': f"KRI {control.mapped_kri_name} value is {raw}",
-            'analysis': "Analyzed via threshold fallback. AI logic unavailable.",
-            'risk_impact': 'Medium',
-            'confidence': 50
+            'likelihood_score': round(likelihood, 2),
+            'impact_score': round(impact, 2),
+            'exploitability_score': round(exploitability, 2),
+            'residual_risk_score': base_score,
+            'compliance_confidence': confidence,
         }
 
+    def generate_regulation_summary(self, reg_name, results):
+        statuses = [r.get('status', 'Unknown') for r in results]
+        if 'Non-Compliant' in statuses:
+            tone = 'requires immediate remediation'
+        elif 'Partial' in statuses:
+            tone = 'is partially compliant with observed gaps'
+        else:
+            tone = 'meets the evaluated control requirements'
+        return f"Compliance review for {reg_name} {tone} across {len(results)} mapped control(s)."
+
+    def _fallback_control_analysis(self, control, kri_data):
+        raw = kri_data.get('raw_value', 0)
+        band = kri_data.get('band', 'Watch')
+        status = 'Partial'
+        if band == 'Safe' or raw > 90:
+            status = 'Compliant'
+        elif band == 'Critical' or raw < 40:
+            status = 'Non-Compliant'
+
+        return {
+            'status': status,
+            'evidence': f"KRI {control.mapped_kri_name} value is {raw}{kri_data.get('unit', '')}",
+            'analysis': (
+                f"Control {control.control_id} evaluated against {control.mapped_kri_name}. "
+                f"Observed value {raw} indicates {status.lower()} alignment with {control.title}."
+            ),
+            'risk_impact': 'High' if status == 'Non-Compliant' else 'Medium' if status == 'Partial' else 'Low',
+            'confidence': 75 if status != 'Partial' else 60,
+        }
+
+    def _is_quota_error(self, exc: Exception) -> bool:
+        msg = str(exc).lower()
+        return '429' in msg or 'quota' in msg or 'rate limit' in msg
+
+    def extract_kris_locally(self, report_text: str) -> Dict[str, float]:
+        """Parse KRIs from structured reports/JSON without calling Gemini."""
+        import re
+
+        text = report_text.strip()
+        kris: Dict[str, float] = {}
+
+        if text.startswith('{'):
+            try:
+                data = json.loads(text)
+                if isinstance(data, dict):
+                    return self._normalize_extracted_kris(data)
+            except json.JSONDecodeError:
+                pass
+
+        patterns = {
+            'mfa_percentage': [
+                r'(?:mfa|multi-factor authentication).*?(\d+(?:\.\d+)?)\s*%',
+                r'(\d+(?:\.\d+)?)\s*%.*?(?:mfa|multi-factor)',
+            ],
+            'patch_delay_days': [
+                r'patch(?:es)?.*?(?:within|in|after)\s*(\d+(?:\.\d+)?)\s*days',
+                r'(\d+(?:\.\d+)?)\s*days.*?(?:patch|patched)',
+            ],
+            'encryption_percentage': [
+                r'encrypt(?:ion|ed).*?(\d+(?:\.\d+)?)\s*%',
+                r'(?:all|100%).*?encrypt',
+            ],
+            'failed_login_rate': [
+                r'failed(?:\s+authentication|\s+login).*?(\d+(?:\.\d+)?)\s*%',
+                r'(\d+(?:\.\d+)?)\s*%.*?(?:failed\s+login|failed\s+authentication)',
+            ],
+            'privileged_accounts': [
+                r'(\d+)\s*(?:privileged|admin(?:istrative)?(?:[\s-]level)?)\s*accounts',
+                r'maintains\s*(\d+)\s*(?:privileged|admin)',
+            ],
+            'incident_response_time': [
+                r'(?:response|containment)\s*time.*?(\d+(?:\.\d+)?)\s*hours',
+                r'(\d+(?:\.\d+)?)\s*hours.*?(?:incident|response|containment)',
+            ],
+        }
+
+        lower = text.lower()
+        if re.search(r'all .{0,80}encrypt', text, re.IGNORECASE):
+            kris['encryption_percentage'] = 100.0
+
+        for key, regex_list in patterns.items():
+            if key == 'encryption_percentage' and 'encryption_percentage' in kris:
+                continue
+            for pattern in regex_list:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    try:
+                        kris[key] = float(match.group(1))
+                        break
+                    except (TypeError, ValueError):
+                        continue
+
+        return kris
+
+    def resolve_kris_from_logs(self, log_text: str, manual_kris: Dict = None) -> Dict[str, float]:
+        """Prefer local parsing; use Gemini only when local extraction is insufficient."""
+        manual_kris = manual_kris or {}
+        local_kris = self.extract_kris_locally(log_text)
+        merged = {**local_kris, **manual_kris}
+
+        required = {
+            'mfa_percentage', 'patch_delay_days', 'encryption_percentage',
+            'failed_login_rate', 'privileged_accounts', 'incident_response_time',
+        }
+        if required.issubset(merged.keys()):
+            return merged
+
+        try:
+            gemini_kris = self.extract_kris_from_text(log_text)
+            return {**gemini_kris, **manual_kris}
+        except GeminiInsightsError as exc:
+            if merged and self._is_quota_error(exc.__cause__ or exc):
+                return merged
+            raise
+
+    def generate_insights_with_fallback(
+        self,
+        normalized_kris: Dict,
+        risk_score: float,
+        risk_level: str,
+        compliance_violations: Dict,
+        supplemental_report: str = None,
+    ) -> Dict[str, Any]:
+        """Generate insights via Gemini; use rule-based output only when quota is exceeded."""
+        try:
+            return self.generate_insights(
+                normalized_kris,
+                risk_score,
+                risk_level,
+                compliance_violations,
+                supplemental_report=supplemental_report,
+            )
+        except GeminiInsightsError as exc:
+            cause = exc.__cause__
+            if cause and self._is_quota_error(cause):
+                fallback = self._fallback_insights(
+                    normalized_kris, risk_score, risk_level, compliance_violations
+                )
+                fallback['model_used'] = self._last_model_used or 'rule-based'
+                return fallback
+            if self._is_quota_error(exc):
+                fallback = self._fallback_insights(
+                    normalized_kris, risk_score, risk_level, compliance_violations
+                )
+                fallback['model_used'] = 'rule-based'
+                return fallback
+            raise
+
+    def _fallback_insights(
+        self,
+        normalized_kris: Dict,
+        risk_score: float,
+        risk_level: str,
+        compliance_violations: Dict = None,
+    ) -> Dict[str, Any]:
+        """Rule-based insights when Gemini is unavailable"""
+        critical = [
+            (name, data) for name, data in normalized_kris.items()
+            if data.get('band') in ('Critical', 'Warning')
+        ]
+        watch = [
+            (name, data) for name, data in normalized_kris.items()
+            if data.get('band') == 'Watch'
+        ]
+
+        if critical:
+            focus = ', '.join(name for name, _ in critical)
+            risk_explanation = (
+                f"The organization shows a {risk_level.lower()} overall posture ({risk_score:.1f}/100), "
+                f"but critical attention is required for: {focus}. These gaps increase exposure to "
+                f"credential abuse, data loss, and regulatory non-compliance."
+            )
+        else:
+            risk_explanation = (
+                f"The organization maintains a {risk_level.lower()} risk posture with a score of "
+                f"{risk_score:.1f}/100. Core technical controls are generally healthy"
+                + (f"; monitor: {', '.join(n for n, _ in watch)}" if watch else "")
+                + "."
+            )
+
+        threat_scenarios = []
+        for name, data in critical[:3]:
+            threat_scenarios.append(
+                f"{name} gap exploitation: attacker leverages weak {name.lower()} "
+                f"(value {data.get('raw_value')}{data.get('unit', '')}) -> lateral movement -> data impact"
+            )
+        if not threat_scenarios:
+            threat_scenarios = [
+                "Phishing-led credential theft targeting staff with incomplete security awareness",
+                "Third-party vendor compromise affecting shared integrations",
+                "Insider misuse of privileged access without sufficient monitoring",
+            ]
+
+        remediation_steps = []
+        for name, data in critical[:3]:
+            remediation_steps.append(
+                f"Remediate {name}: current value {data.get('raw_value')}{data.get('unit', '')} "
+                f"is in {data.get('band')} band — implement targeted control uplift (SBP/SECP mapped)."
+            )
+        if not remediation_steps:
+            remediation_steps = [
+                "Maintain MFA enforcement and quarterly access reviews (SBP 3.1.2)",
+                "Continue patch SLAs within 15 days for critical systems (SECP resilience)",
+                "Expand security awareness training above 95% completion (PECA mandate)",
+            ]
+
+        proof_lines = ["Independent Compliance Assertion (rule-based summary):"]
+        for reg_name, result in (compliance_violations or {}).items():
+            proof_lines.append(f"\n{reg_name}: {result.get('status', 'Unknown')}")
+            for control in result.get('control_results', []):
+                proof_lines.append(f"  • {control.get('evidence', '')} — {control.get('status', 'N/A')}")
+
+        return {
+            'risk_explanation': risk_explanation,
+            'threat_scenarios': threat_scenarios[:3],
+            'remediation_steps': remediation_steps[:5],
+            'compliance_proof': '\n'.join(proof_lines),
+        }
 
     def generate_insights(
         self,
@@ -467,175 +677,137 @@ class AIGovernanceAgent:
         risk_score: float,
         risk_level: str,
         compliance_violations: Dict,
+        supplemental_report: str = None,
     ) -> Dict[str, Any]:
-        """Generate AI insights for assessment"""
-        
-        if not self.model:
-            return self._fallback_insights(normalized_kris, risk_score, risk_level)
-        
-        try:
-            # Prepare context
-            context = self._prepare_context(normalized_kris, risk_score, risk_level, compliance_violations)
-            
-            # Generate risk explanation
-            risk_explanation = self._generate_risk_explanation(context)
-            
-            # Generate threat scenarios
-            threat_scenarios = self._generate_threat_scenarios(context)
-            
-            # Generate remediation steps
-            remediation_steps = self._generate_remediation_steps(context)
-            
-            # Generate Compliance Support Summary (Proof of Evidence)
-            compliance_proof = self._generate_compliance_proof(context)
-            
-            return {
-                'risk_explanation': risk_explanation,
-                'threat_scenarios': threat_scenarios,
-                'remediation_steps': remediation_steps,
-                'compliance_proof': compliance_proof,
-            }
-        except Exception as e:
-            logger.error(f"Gemini API error: {str(e)}")
-            return {
-                'risk_explanation': "AI Analysis failed. Please check API configuration.",
-                'threat_scenarios': ["N/A"],
-                'remediation_steps': ["N/A"],
-                'compliance_proof': "N/A"
-            }
+        """Generate AI insights using Gemini only (no manual fallback)."""
+        if not self.api_key or not self._model_names:
+            raise GeminiInsightsError(
+                "GEMINI_API_KEY is not configured. Add it to backend/.env to enable AI insights."
+            )
 
-    def _generate_compliance_proof(self, context: Dict) -> str:
-        """Generate AI proof of compliance based on raw evidence"""
-        evidence_str = ""
-        for reg_name, result in context.get('violations', {}).items():
-            evidence_str += f"\n- {reg_name}: status is {result.get('status')}. "
-            for entry in result.get('evidence', []):
-                evidence_str += f"[{entry['kri']} is {entry['actual']}, required {entry['required']} - {entry['status']}]. "
-
-        prompt = f"""
-        Format the output as a formal 'Independent Compliance Assertion'.
-        Compare the actual values against the mandatory frameworks (e.g. SBP Cybersecurity Circular No. 6 of 2017, PECA Section 21).
-        
-        Mandatory Mappings for Fintech Sector:
-        - MFA -> SBP Section 3.1.2 (Identity & Access Management)
-        - Patching -> SECP Circular 29 (Operational Resilience)
-        - Encryption -> SBP Section 3.1.4 (Data Protection)
-        - Awareness -> PECA 2016 Awareness Mandate
-        
-        Briefly explain WHY certain sections are marked as Partial or Non-Compliant using specific standard terminology.
-        """
-        
-        try:
-            response = self.model.generate_content(prompt)
-            return response.text
-        except:
-            return "AI compliance verification in progress..."
-
-    def extract_kris_from_text(self, report_text: str) -> Dict[str, float]:
-        """Extract KRIs from unstructured text using Gemini"""
-        if not self.model:
-            return {}
-
-        prompt = f"""
-        Extract the following Key Risk Indicators (KRIs) from this security assessment report text.
-        Return the results as a JSON object where the keys match exactly these names:
-        - "MFA Coverage" (percentage, 0-100)
-        - "Patch Delay" (average days, number)
-        - "Encryption Coverage" (percentage, 0-100)
-        - "Failed Login Rate" (percentage, 0-100)
-        - "Privileged Account Count" (number)
-        - "Incident Response Time" (hours, number)
-        - "Security Awareness Training" (percentage, 0-100)
-        - "Vendor Risk Score" (0-100)
-        - "DDoS Protection" (1 if active/yes, 0 otherwise)
-
-        If a metric is not mentioned, use a reasonable default based on context or leave it out of the JSON.
-        Only return the JSON object, nothing else.
-
-        Report Text:
-        ---
-        {report_text}
-        ---
-        """
-
-        try:
-            response = self.model.generate_content(prompt)
-            cleaned_text = response.text.replace('```json', '').replace('```', '').strip()
-            return json.loads(cleaned_text)
-        except Exception as e:
-            logger.error(f"Error extracting KRIs from text: {str(e)}")
-            return {}
-
-    def _prepare_context(self, normalized_kris: Dict, risk_score: float, risk_level: str, violations: Dict) -> Dict:
-        """Prepare context for AI"""
-        critical_kris = [
-            (name, data) for name, data in normalized_kris.items()
-            if data['band'] == 'Critical'
+        critical_names = [
+            name for name, data in normalized_kris.items()
+            if data.get('band') in ('Critical', 'Warning')
         ]
-        
+        report_section = ''
+        if supplemental_report:
+            report_section = f"\nSupplemental log/report context (for reference only):\n{supplemental_report[:4000]}\n"
+
+        prompt = f"""
+Act as a senior GRC and cyber risk analyst for a Fintech organization in Pakistan.
+
+Assessment snapshot:
+- Risk score: {risk_score:.1f}/100 ({risk_level})
+- Critical / warning KRIs: {', '.join(critical_names) if critical_names else 'none'}
+- KRI evidence:
+{self._kri_summary(normalized_kris)}
+
+Compliance mapping:
+{self._compliance_summary(compliance_violations)}
+{report_section}
+Return ONLY valid JSON with this exact shape:
+{{
+  "risk_explanation": "150 words max plain-language executive summary",
+  "threat_scenarios": ["Title: MITRE-style attack path", "...", "..."],
+  "remediation_steps": ["action with SBP/SECP/NIST reference", "..."],
+  "compliance_proof": "formal Independent Compliance Assertion paragraph referencing SBP, SECP, PECA where relevant"
+}}
+"""
+        raw = self._call_gemini(prompt)
+        try:
+            data = self._parse_json(raw)
+        except json.JSONDecodeError as exc:
+            raise GeminiInsightsError("Gemini returned invalid JSON for insights.") from exc
+
+        for field in ('risk_explanation', 'threat_scenarios', 'remediation_steps', 'compliance_proof'):
+            if not data.get(field):
+                raise GeminiInsightsError(f"Gemini returned incomplete insights (missing {field}).")
+
         return {
-            'risk_score': risk_score,
-            'risk_level': risk_level,
-            'critical_kris': critical_kris,
-            'all_kris': normalized_kris,
-            'violations': violations,
+            'risk_explanation': data['risk_explanation'],
+            'threat_scenarios': data['threat_scenarios'],
+            'remediation_steps': data['remediation_steps'],
+            'compliance_proof': data['compliance_proof'],
+            'model_used': self._last_model_used or 'gemini',
         }
 
-    def _generate_risk_explanation(self, context: Dict) -> str:
-        """Generate risk explanation using Gemini"""
+    KRI_EXTRACT_KEY_ALIASES = {
+        'MFA Coverage': 'mfa_percentage',
+        'Patch Delay': 'patch_delay_days',
+        'Encryption Coverage': 'encryption_percentage',
+        'Failed Login Rate': 'failed_login_rate',
+        'Privileged Account Count': 'privileged_accounts',
+        'Privileged Accounts': 'privileged_accounts',
+        'Incident Response Time': 'incident_response_time',
+        'Security Awareness Training': 'security_awareness_training',
+        'Vendor Risk Score': 'vendor_risk_score',
+        'DDoS Protection': 'ddos_protection',
+    }
+
+    def _normalize_extracted_kris(self, raw: Dict) -> Dict[str, float]:
+        """Map Gemini output keys to frontend/engine snake_case keys."""
+        normalized = {}
+        for key, value in raw.items():
+            if value is None or value == '':
+                continue
+            mapped = self.KRI_EXTRACT_KEY_ALIASES.get(key, key)
+            try:
+                if isinstance(value, bool):
+                    normalized[mapped] = 1.0 if value else 0.0
+                elif isinstance(value, str):
+                    lower = value.strip().lower()
+                    if lower in ('yes', 'active', 'enabled', 'true'):
+                        normalized[mapped] = 1.0
+                    elif lower in ('no', 'inactive', 'disabled', 'false'):
+                        normalized[mapped] = 0.0
+                    else:
+                        normalized[mapped] = float(value)
+                else:
+                    normalized[mapped] = float(value)
+            except (TypeError, ValueError):
+                continue
+        return normalized
+
+    def extract_kris_from_text(self, report_text: str) -> Dict[str, float]:
+        """Infer KRI values from security logs/reports using Gemini."""
+        if not self.api_key or not self._model_names:
+            raise GeminiInsightsError(
+                "GEMINI_API_KEY is not configured. Add it to backend/.env to analyze logs."
+            )
+
         prompt = f"""
-        Based on the following cybersecurity assessment data, provide a concise risk explanation (max 150 words):
-        
-        Risk Score: {context['risk_score']:.2f}/100 ({context['risk_level']})
-        Critical Metrics: {', '.join([name for name, _ in context['critical_kris']])}
-        
-        Provide a plain-language summary of the organization's risk posture and business implications.
-        """
-        
+You are a senior cybersecurity analyst reviewing security logs and reports for a GRC assessment.
+
+Analyze the content below and infer Key Risk Indicator (KRI) values.
+The document may NOT contain explicit KRI labels — derive reasonable numeric estimates from
+events, patterns, failures, auth activity, patching signals, encryption mentions, and context.
+
+Return ONLY valid JSON with these exact snake_case keys (all numbers):
+- mfa_percentage (0-100, MFA/adaptive auth coverage estimate)
+- patch_delay_days (average days to patch critical vulnerabilities)
+- encryption_percentage (0-100, data-at-rest/in-transit encryption coverage)
+- failed_login_rate (0-100, failed login attempts as % of total logins)
+- privileged_accounts (count of privileged/admin accounts observed or estimated)
+- incident_response_time (hours, mean time to respond to incidents)
+
+Log / report content:
+---
+{report_text[:12000]}
+---
+"""
+        raw = self._call_gemini(prompt)
         try:
-            response = self.model.generate_content(prompt)
-            return response.text
-        except:
-            return "Unable to generate AI risk explanation at this time."
+            data = self._parse_json(raw)
+        except json.JSONDecodeError as exc:
+            raise GeminiInsightsError(
+                "Gemini could not parse KRI values from the uploaded logs."
+            ) from exc
 
-    def _generate_threat_scenarios(self, context: Dict) -> List[str]:
-        """Generate AI-powered threat scenarios mapped to MITRE ATT&CK"""
-        if not self.model: return ["Ransomware via MFA Gap", "Data Breach via Patch Delay"]
-        
-        prompt = f"""
-        Act as a Cyber Threat Analyst for a {context.get('sector', 'Fintech')} organization.
-        Based on the current critical gaps: {', '.join([n for n, _ in context['critical_kris']])}.
-        
-        Generate 3 technical threat scenarios including the probable MITRE ATT&CK vectors.
-        Format each line as 'Title: Step-by-Step Path'.
-        Example: 'Ransomware Exploiting MFA Gap: T1078 (Valid Accounts) -> T1486 (Data Encrypted for Impact)'.
-        """
-        try:
-            res = self.model.generate_content(prompt)
-            return [l.strip('- *') for l in res.text.strip().split('\n') if ':' in l][:3]
-        except:
-            return ["Credential Stuffing: Exploiting low MFA coverage"]
-
-    def _generate_remediation_steps(self, context: Dict) -> List[str]:
-        """Generate auditor-grade remediation steps mapped to standards"""
-        if not self.model: return ["Enable MFA", "Shorten Patch Cycle"]
-
-        prompt = f"""
-        Act as a Senior GRC Consultant. 
-        Provide top 5 prioritized remediation actions based on the critical gaps in this assessment.
-        
-        Mandatory: For each action, add a parenthetical reference to the relevant part of the standard 
-        (e.g., SBP 3.1.2, NIST PR.AC-1, or ISO A.9.1).
-        
-        Context Sector: {context.get('sector', 'Fintech')}
-        Gaps: {', '.join([n for n, _ in context['critical_kris']])}
-        
-        Return a simple list of strings.
-        """
-        try:
-            res = self.model.generate_content(prompt)
-            return [l.strip('- *') for l in res.text.strip().split('\n') if len(l) > 10][:5]
-        except:
-            return ["Priority 1: Implement MFA organization-wide (SBP 3.1.2)"]
-
+        kris = self._normalize_extracted_kris(data)
+        if not kris:
+            raise GeminiInsightsError(
+                "Could not determine KRI values from the uploaded logs. "
+                "Try a richer log file or add optional manual KRI overrides."
+            )
+        return kris
 
